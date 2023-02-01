@@ -36,17 +36,15 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 
 	time.Sleep(500 * time.Millisecond)
 	buffer, err := a.replay(data)
-	er := json.Unmarshal(buffer, &body)
-	if er != nil {
-		return tx, er
-	}
-	if body.Code == 1 {
-		err = fmt.Errorf("1")
-		return tx, err
-	}
 	if err != nil {
-		return tx, err
+		return nil, err
 	}
+	er := json.Unmarshal(buffer, &body)
+	if er != nil || body.Msg != "OK" {
+		er = fmt.Errorf("msg: %s, error: %s", body.Msg, er)
+		return nil, er
+	}
+
 	var simulated_tx = &RawMsg{}
 	err = json.Unmarshal(buffer, simulated_tx)
 	if len(simulated_tx.Data.Txns) == 0 {
@@ -97,19 +95,19 @@ func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func (a *Replayer) CalAmount(balance *SimAccountBalance) *big.Float {
+func (a *Replayer) CalAmount(balance *SimAccountBalance) *model.BigFloat {
 	var ba, _ = new(big.Float).SetPrec(uint(256)).SetString("0")
 	for _, asset := range balance.Assets {
 		var value = a.GetAmount(asset)
-		ba.Add(ba, value)
+		ba.Add(ba, (*big.Float)(value))
 	}
-	return ba
+	return (*model.BigFloat)(ba)
 }
 
-func (a *Replayer) GetAmount(asset *SimAsset) *big.Float {
+func (a *Replayer) GetAmount(asset *SimAsset) *model.BigFloat {
 	ret, _ := new(big.Float).SetPrec(uint(256)).SetString(asset.Amount)
 	dec := fmt.Sprintf("1e%d", asset.Decimals)
 	denominator, _ := new(big.Float).SetString(dec)
 	res := ret.Quo(ret, denominator)
-	return res
+	return (*model.BigFloat)(res)
 }

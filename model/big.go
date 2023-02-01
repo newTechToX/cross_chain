@@ -66,3 +66,70 @@ func (x *BigInt) MarshalJSON() ([]byte, error) {
 func (z *BigInt) UnmarshalJSON(text []byte) error {
 	return z.UnmarshalText(text)
 }
+
+type BigFloat big.Float
+
+func (b *BigFloat) Value() (driver.Value, error) {
+	if b != nil {
+		return (*big.Float)(b).String(), nil
+	}
+	return nil, nil
+}
+
+func (b *BigFloat) Scan(value interface{}) error {
+	if value == nil {
+		b = nil
+	}
+
+	switch t := value.(type) {
+	case []uint8:
+		ta := value.([]uint8)
+		tt := string(ta)
+		_, ok := (*big.Float)(b).SetString(tt)
+		if !ok {
+			return fmt.Errorf("failed to load value to []uint8: %v", value)
+		}
+	default:
+		return fmt.Errorf("could not scan type %T into BigInt", t)
+	}
+	return nil
+}
+
+func (z *BigFloat) Set(x *BigFloat) *BigFloat {
+	return (*BigFloat)((*big.Float)(z).Set((*big.Float)(x)))
+}
+
+func (b *BigFloat) String() string {
+	if buf, err := b.MarshalText(); err == nil {
+		return string(buf)
+	} else {
+		return ""
+	}
+}
+
+func (b *BigFloat) Text(format byte, prec int) string {
+	return (*big.Float)(b).Text(format, prec)
+}
+
+func (x *BigFloat) MarshalText() (text []byte, err error) {
+	return (*big.Float)(x).MarshalText()
+}
+
+// UnmarshalText implements the encoding.TextUnmarshaler interface.
+func (z *BigFloat) UnmarshalText(text []byte) error {
+	return (*big.Float)(z).UnmarshalText(text)
+}
+
+// The JSON marshalers are only here for API backward compatibility
+// (programs that explicitly look for these two methods). JSON works
+// fine with the TextMarshaler only.
+
+// MarshalJSON implements the json.Marshaler interface.
+func (x *BigFloat) MarshalJSON() ([]byte, error) {
+	return x.MarshalText()
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface.
+func (z *BigFloat) UnmarshalJSON(text []byte) error {
+	return z.UnmarshalText(text)
+}
