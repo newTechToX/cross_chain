@@ -43,7 +43,7 @@ func NewLogic(svc *svc.ServiceContext, chain string) *Logic {
 }
 
 func (a *Logic) ReplayOutTxLogic(table string) error {
-	stmt := fmt.Sprintf("select * from %s where direction='out' and isfaketoken is null and (chain='ethereum' or chain='bsc') and from_address_error is not null", table)
+	stmt := fmt.Sprintf("select * from %s where direction='out' and isfaketoken is null and (chain='ethereum' or chain='bsc') and to_address_profit is null", table)
 	var datas []*model.Data
 	var err error
 	err = a.svc.ProjectsDao.DB().Select(&datas, stmt)
@@ -52,7 +52,7 @@ func (a *Logic) ReplayOutTxLogic(table string) error {
 	}
 	println(len(datas))
 
-	size := 30
+	size := 20000
 	i := 0
 	for i = 0; i+size < len(datas); i = i + size {
 		go a.replayOutTxLogic(table, datas[i:i+size])

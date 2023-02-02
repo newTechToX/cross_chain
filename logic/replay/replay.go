@@ -34,7 +34,7 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 	}
 	body := Body{}
 
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(2 * time.Second)
 	buffer, err := a.replay(data)
 	if err != nil {
 		return nil, err
