@@ -34,14 +34,14 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 	}
 	body := Body{}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 	buffer, err := a.replay(data)
 	if err != nil {
 		return nil, err
 	}
 	er := json.Unmarshal(buffer, &body)
 	if er != nil || body.Msg != "OK" {
-		er = fmt.Errorf("msg: %s, error: %s", body.Msg, er)
+		er = fmt.Errorf("msg: %s, hash: %s, error: %s", body.Msg, data.Hash, er)
 		return nil, er
 	}
 
@@ -98,15 +98,15 @@ func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 func (a *Replayer) CalAmount(balance *SimAccountBalance) *model.BigFloat {
 	var ba, _ = new(big.Float).SetPrec(uint(256)).SetString("0")
 	for _, asset := range balance.Assets {
-		var value = a.GetAmount(asset)
+		var value = a.GetFloatAmount(asset.Amount, asset.Decimals)
 		ba.Add(ba, (*big.Float)(value))
 	}
 	return (*model.BigFloat)(ba)
 }
 
-func (a *Replayer) GetAmount(asset *SimAsset) *model.BigFloat {
-	ret, _ := new(big.Float).SetPrec(uint(256)).SetString(asset.Amount)
-	dec := fmt.Sprintf("1e%d", asset.Decimals)
+func (a *Replayer) GetFloatAmount(Amount string, Decimals int) *model.BigFloat {
+	ret, _ := new(big.Float).SetPrec(uint(256)).SetString(Amount)
+	dec := fmt.Sprintf("1e%d", Decimals)
 	denominator, _ := new(big.Float).SetString(dec)
 	res := ret.Quo(ret, denominator)
 	return (*model.BigFloat)(res)

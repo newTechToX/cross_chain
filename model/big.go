@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math/big"
+	"strings"
 )
 
 type BigInt big.Int
@@ -34,6 +35,13 @@ func (b *BigInt) Scan(value interface{}) error {
 
 func (z *BigInt) Set(x *BigInt) *BigInt {
 	return (*BigInt)((*big.Int)(z).Set((*big.Int)(x)))
+}
+
+func (z *BigInt) SetString(x string, base int) *BigInt {
+	if res, err := (*big.Int)(z).SetString(x, base); err == true {
+		return (*BigInt)(res)
+	}
+	return nil
 }
 
 func (b *BigInt) String() string {
@@ -67,6 +75,10 @@ func (z *BigInt) UnmarshalJSON(text []byte) error {
 	return z.UnmarshalText(text)
 }
 
+func (x *BigInt) Cmp(y *BigInt) int {
+	return (*big.Int)(x).Cmp((*big.Int)(y))
+}
+
 type BigFloat big.Float
 
 func (b *BigFloat) Value() (driver.Value, error) {
@@ -97,6 +109,13 @@ func (b *BigFloat) Scan(value interface{}) error {
 
 func (z *BigFloat) Set(x *BigFloat) *BigFloat {
 	return (*BigFloat)((*big.Float)(z).Set((*big.Float)(x)))
+}
+
+func (z *BigFloat) SetString(x string) *BigFloat {
+	if res, f := new(big.Float).SetPrec(uint(256)).SetString(x); f == true {
+		return (*BigFloat)(res)
+	}
+	return nil
 }
 
 func (b *BigFloat) String() string {
@@ -132,4 +151,14 @@ func (x *BigFloat) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 func (z *BigFloat) UnmarshalJSON(text []byte) error {
 	return z.UnmarshalText(text)
+}
+
+func (x *BigFloat) Cmp(y *BigFloat) int {
+	return (*big.Float)(x).Cmp((*big.Float)(y))
+}
+
+func (z *BigFloat) ConvertToBigInt() *BigInt {
+	s := strings.Split(z.String(), ".")
+	ss := s[0] + s[1]
+	return new(BigInt).SetString(ss, 10)
 }

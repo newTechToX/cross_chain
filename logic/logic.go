@@ -29,6 +29,10 @@ type Tags struct {
 
 const from_token_amount, from_token_type, from_transfer_error = 1, 2, 3
 
+// token_profit_minus_amount意味着token获利金额与amount参数不一致
+// other...意味着token获利金额与amount参数一致，
+const token_profit_minus_amount, other_address_profit = 2, 1
+
 func NewLogic(svc *svc.ServiceContext, chain string) *Logic {
 	p := svc.Providers.Get(chain)
 	r := (&replay.Replayer{}).NewReplayer()
@@ -52,7 +56,7 @@ func (a *Logic) ReplayOutTxLogic(table string) error {
 	}
 	println(len(datas))
 
-	size := 20000
+	size := 25000
 	i := 0
 	for i = 0; i+size < len(datas); i = i + size {
 		go a.replayOutTxLogic(table, datas[i:i+size])
@@ -96,7 +100,7 @@ func (a *Logic) replayOutTxLogic(table string, datas []*model.Data) (err error) 
 				//如果arg_token != deposit_token
 				if tag.FromAddressError == from_token_type {
 					tag.FromAddressError = 0
-					previous_token := make(map[string]*model.BigFloat)
+					previous_token := make(map[string]*DecAmount)
 
 					//获取所有arg_token的资金来源
 					for token := range real_token {
@@ -156,9 +160,9 @@ func (a *Logic) replayOutTxLogic(table string, datas []*model.Data) (err error) 
 			}
 		}
 		if tag.TokenProfitError != 1 {
-			if ok := a.checkTokenProfit(real_token, tx.BalanceChanges); !ok {
-				println("token_profit ", data.Hash)
-				tag.TokenProfitError = 1
+			if ok := a.checkTokenProfit(real_token, data.Amount, tx.BalanceChanges); ok != 0 {
+				println("token_profit_error ", data.Hash)
+				tag.TokenProfitError = ok
 			}
 
 		}
@@ -217,8 +221,14 @@ func (a *Logic) replayOutTxLogic(table string, datas []*model.Data) (err error) 
 // 获得实际交易的token——address
 // 转的就是underlying token，直接burn掉
 // 转的是wapper，溯源最终的underlying token
-func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBalance) map[string]*model.BigFloat {
-	underlying := make(map[string]*model.BigFloat)
+
+type DecAmount struct {
+	Amount   string
+	Decimals int
+}
+
+func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBalance) map[string]*DecAmount {
+	underlying := make(map[string]*DecAmount)
 	burn_address := "0x0000000000000000000000000000000000000000"
 
 	for _, e := range balanceChanges {
@@ -226,7 +236,10 @@ func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBa
 		if e.Account == token {
 			for _, ee := range e.Assets {
 				if ee.Amount[0] != '-' {
-					underlying[ee.Address] = a.replayer.GetAmount(ee)
+					underlying[ee.Address] = &DecAmount{
+						Amount:   ee.Amount,
+						Decimals: ee.Decimals,
+					}
 				}
 			}
 			break
@@ -234,7 +247,10 @@ func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBa
 			//从burn的地址里面找是否直接burn掉token
 			for _, ee := range e.Assets {
 				if ee.Address == token && ee.Amount[0] != '-' {
-					underlying[ee.Address] = a.replayer.GetAmount(ee)
+					underlying[ee.Address] = &DecAmount{
+						Amount:   ee.Amount,
+						Decimals: ee.Decimals,
+					}
 					break
 				}
 			}
@@ -247,14 +263,17 @@ func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBa
 }
 
 // eg: ETH -> WETH -> anyETH，该函数可以用于查找前一个token的地址
-func (a *Logic) getPreviousToken(token string, balance_changes []*replay.SimAccountBalance) (previous_token map[string]*model.BigFloat) {
-	previous_token = make(map[string]*model.BigFloat)
+func (a *Logic) getPreviousToken(token string, balance_changes []*replay.SimAccountBalance) (previous_token map[string]*DecAmount) {
+	previous_token = make(map[string]*DecAmount)
 	for _, e := range balance_changes {
 		for _, ee := range e.Assets {
 			if ee.Address == token && ee.Amount[0] == '-' { //查找是哪个地址转出的token，获取该地址的资金来源
 				for _, x := range e.Assets {
 					if x.Address != token && x.Amount[0] != '-' {
-						previous_token[x.Address] = a.replayer.GetAmount(x)
+						previous_token[x.Address] = &DecAmount{
+							Amount:   x.Amount,
+							Decimals: x.Decimals,
+						}
 					}
 				}
 			}
@@ -263,7 +282,7 @@ func (a *Logic) getPreviousToken(token string, balance_changes []*replay.SimAcco
 	return
 }
 
-func (a *Logic) checkFrom(underlying map[string]*model.BigFloat, token, amount string, balance *replay.SimAccountBalance) int {
+func (a *Logic) checkFrom(underlying map[string]*DecAmount, token, amount string, balance *replay.SimAccountBalance) int {
 
 	res := 0
 
@@ -284,14 +303,15 @@ func (a *Logic) checkFrom(underlying map[string]*model.BigFloat, token, amount s
 
 // 1. from转出的token与token_address收到的token是否一致
 // 2. 返回的是from转出的token中，所有有问题的token_address（amount不对或者在underlying中查不到）
-func (a *Logic) checkFrom_Token(underlying map[string]*model.BigFloat, token, amount string, balance *replay.SimAccountBalance) (flag int, res []string) {
+func (a *Logic) checkFrom_Token(underlying map[string]*DecAmount, token, amount string, balance *replay.SimAccountBalance) (flag int, res []string) {
 	flag = 0
 	for _, asset := range balance.Assets {
 		if v, ok := underlying[asset.Address]; ok {
 			//如果转出的token已经被记录，或者转出的就是arg_token，那么就检查amount
 			//如果amount不正确，那么该交易有问题
-			x := a.replayer.GetAmount(asset)
-			if x.String() != "-"+v.String() {
+			x := a.replayer.GetFloatAmount(asset.Amount, asset.Decimals)
+			vv := a.replayer.GetFloatAmount(v.Amount, v.Decimals)
+			if x.String() != "-"+vv.String() {
 				flag = from_token_amount
 			}
 		} else if asset.Address == token && asset.Amount[1:] != amount {
@@ -346,27 +366,39 @@ func (a *Logic) logicUpdate(Id uint64, profit []byte, table string, tag Tags) er
 }
 
 // 应用场景：有多次cross out至token_addr，但是replay的结果只有最终的value
-// 需要对token_addr所有assest进行检查，计算从其他账户转来的amount之和是否等于token profit amount
-func (a *Logic) checkTokenProfit(realToken map[string]*model.BigFloat, balanceChange []*replay.SimAccountBalance) bool {
+// 逻辑1：直接检查token_addr收到的real_token amount与实际记录的amount是否相等，如果不想等，再查逻辑2
+// 逻辑2：对token_addr所有assest进行检查，计算从其他账户转来的amount之和是否等于token profit amount
+func (a *Logic) checkTokenProfit(realToken map[string]*DecAmount, amount *model.BigInt, balanceChange []*replay.SimAccountBalance) int {
 	//检查token地址实际获利的所有assest
 	for token_addr, value := range realToken {
+		if value.Amount == amount.String() {
+			continue
+		}
+
+		xx := new(model.BigInt).SetString(value.Amount, 10)
+		if xx.Cmp(amount) < 0 {
+			return token_profit_minus_amount
+		}
+
 		sum, _ := new(big.Float).SetPrec(uint(256)).SetString("0")
 		for _, e := range balanceChange {
 			for _, ee := range e.Assets {
 				if ee.Address == token_addr && ee.Amount[0] == '-' {
 					//无论其他地址转入或转出该token，全都加起来
-					v := a.replayer.GetAmount(ee)
+					v := a.replayer.GetFloatAmount(ee.Amount, ee.Decimals)
 					sum.Add(sum, (*big.Float)(v))
 					break
 				}
 			}
 		}
-
-		var r = (*model.BigFloat)(sum).String()[1:]
-		var y = (value).String()
-		var x, length = r, len(y)
-		if len(r) > length {
-			if r[length] >= '5' {
+		/*
+			denominator, _ := new(big.Float).SetString("100")
+			dis := sum.Quo(sum, denominator)
+			sum = sum.Sub(sum, dis)*/
+		var x, y = (*model.BigFloat)(sum).String()[1:], value.Amount
+		var length = len(y)
+		if len(x) > length {
+			if x[length] >= '5' {
 				x = x[:length-1]
 				y = y[:length-1]
 			} else {
@@ -375,8 +407,8 @@ func (a *Logic) checkTokenProfit(realToken map[string]*model.BigFloat, balanceCh
 		}
 
 		if x != y {
-			return false
+			return other_address_profit
 		}
 	}
-	return true
+	return 0
 }

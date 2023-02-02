@@ -15,7 +15,7 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	re := &replay.Replayer{}
 	a.replayer = re.NewReplayer()
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
-	id := 4167038
+	id := 335098
 	//stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)
 	stmt := fmt.Sprintf("select * from anyswap where id = %d", id)
 
@@ -99,15 +99,19 @@ func ifFromTransferOnly1(datas []*model.Data) {
 	println("all done")
 }
 
-func selectData(id int) []*model.Data {
+func selectData(st string, id int) []*model.Data {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 	//stmt := fmt.Sprintf("select * from anyswap where direction='out' and (chain='ethereum' or chain='bsc') and isfaketoken is null limit 12000")
-	stmt := fmt.Sprintf("select * from anyswap where id = %d", id)
+	var stmt = st
+	if stmt == "" {
+		stmt = fmt.Sprintf("select * from anyswap where id = %d", id)
+	}
 	var datas = []*model.Data{}
 	err := d.DB().Select(&datas, stmt)
 	if err != nil {
 		fmt.Println(err)
 	}
+	println(len(datas))
 	return datas
 }
 
@@ -116,7 +120,7 @@ func TestLogic_getPreviousToken(t *testing.T) {
 	a := &Logic{}
 	re := &replay.Replayer{}
 	a.replayer = re.NewReplayer()
-	datas := selectData(id)
+	datas := selectData("", id)
 	tx, err := a.replayer.Replay(datas[0])
 	if err != nil {
 		fmt.Println(err)
@@ -134,7 +138,7 @@ func TestCheckFromWithSwap(t *testing.T) {
 	a := &Logic{}
 	re := &replay.Replayer{}
 	a.replayer = re.NewReplayer()
-	datas := selectData(id)
+	datas := selectData("", id)
 	data := datas[0]
 	tx, err := a.replayer.Replay(datas[0])
 	if err != nil {
@@ -152,4 +156,51 @@ func TestCheckFromWithSwap(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestLogic_TokenProfitError1(t *testing.T) {
+	id := 338939
+
+	stmt := "select * from anyswap where token_profit_error is not null"
+	datas := selectData(stmt, id)
+
+	i, size := 0, 2500
+	for i = 0; i < len(datas)-2*size; i = i + size {
+		go test_token_error_1(datas[i : i+size])
+	}
+	println(i)
+	test_token_error_1(datas[i:])
+
+}
+
+func test_token_error_1(datas []*model.Data) {
+	a := &Logic{}
+	re := &replay.Replayer{}
+	a.replayer = re.NewReplayer()
+
+	for _, d := range datas {
+		tx, err := a.replayer.Replay(d)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		real_token := a.getRealToken(d.Token, tx.BalanceChanges)
+
+		for _, value := range real_token {
+			x := new(model.BigInt).SetString(value.Amount, 10)
+			if x.Cmp(d.Amount) >= 0 {
+				continue
+			} else {
+				stmt := fmt.Sprintf("update anyswap set token_profit_error = 2 where id = %d", d.Id)
+				da := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+				if _, err := da.DB().Exec(stmt); err != nil {
+					fmt.Println(err)
+				} else {
+					println(d.Hash)
+				}
+			}
+		}
+	}
+	println("all done")
 }
