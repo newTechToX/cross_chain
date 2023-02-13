@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Result struct {
+/*type Result struct {
 	Id          uint64        `db:"id"`
 	MatchId     sql.NullInt64 `db:"match_id"`
 	Chain       string        `db:"chain"`
@@ -27,7 +27,7 @@ type Result struct {
 	Detail      []byte        `db:"detail"`
 }
 
-type Results []*Result
+type Results []*Result*/
 
 type MatchedId struct {
 	SrcID uint64 `db:"src_id"`
@@ -76,9 +76,9 @@ type Data struct {
 	ActionId         uint64         `db:"log_index"`
 	Contract         string         `db:"contract"`
 	Direction        string         `db:"direction"`
-	FromChainId      string         `db:"from_chain"`
+	FromChainId      *BigInt        `db:"from_chain"`
 	FromAddress      string         `db:"from_address"`
-	ToChainId        string         `db:"to_chain"`
+	ToChainId        *BigInt        `db:"to_chain"`
 	ToAddress        string         `db:"to_address"`
 	Token            string         `db:"token"`
 	Amount           *BigInt        `db:"amount"`
@@ -89,4 +89,7 @@ type Data struct {
 	TokenProfitError sql.NullInt64  `db:"token_profit_error"`
 	IsFakeToken      sql.NullInt64  `db:"isfaketoken"`
 	Tag              sql.NullString `db:"tag"`
+	Project          string         `db:"project"`
 }
+
+type Datas []*Data

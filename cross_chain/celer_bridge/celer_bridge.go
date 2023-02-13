@@ -3,7 +3,6 @@ package celer_bridge
 import (
 	"app/model"
 	"app/utils"
-	"encoding/json"
 	"math/big"
 )
 
@@ -32,18 +31,16 @@ func (a *CBridge) Topics0(chain string) []string {
 		Mint, Relay, Withdrawn}
 }
 
-func (a *CBridge) Extract(chain string, events model.Events) model.Results {
-	ret := make(model.Results, 0)
+func (a *CBridge) Extract(chain string, events model.Events) model.Datas {
+	ret := make(model.Datas, 0)
 
 	for _, e := range events {
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   e.Number,
-			Ts:       e.Ts,
 			Index:    e.Index,
 			Hash:     e.Hash,
 			ActionId: e.Id,
-			Project:  a.Name(),
 			Contract: e.Address,
 		}
 
@@ -147,11 +144,6 @@ func (a *CBridge) Extract(chain string, events model.Events) model.Results {
 		} else if res.Direction == model.OutDirection {
 			fromChainId := new(big.Int).Set(utils.GetChainId(chain))
 			res.FromChainId = (*model.BigInt)(fromChainId)
-		}
-
-		detail, err := json.Marshal(d)
-		if err == nil {
-			res.Detail = detail
 		}
 
 		ret = append(ret, res)

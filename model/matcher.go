@@ -1,5 +1,5 @@
 package model
 
 type Matcher interface {
-	Match([]*Result) (Results, error)
+	Match(string, []*Data) (Datas, error)
 }

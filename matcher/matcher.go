@@ -1,12 +1,6 @@
 package matcher
 
 import (
-	"app/cross_chain/across"
-	"app/cross_chain/anyswap"
-	"app/cross_chain/celer_bridge"
-	"app/cross_chain/stargate"
-	"app/cross_chain/synapse"
-	"app/cross_chain/wormhole"
 	"app/model"
 	"app/svc"
 	"app/utils"
@@ -30,20 +24,25 @@ type Matcher struct {
 func NewMatcher(svc *svc.ServiceContext) *Matcher {
 	return &Matcher{
 		svc: svc,
+		/*projects: map[string]model.Matcher{
+			anyswap.NewAnyswapCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
+			across.NewAcrossCollector().Name():        NewSimpleInMatcher(svc.ProjectsDao),
+			celer_bridge.NewCBridgeCollector().Name(): NewSimpleInMatcher(svc.ProjectsDao),
+			wormhole.NewWormHoleCollector(nil).Name(): NewSimpleInMatcher(svc.ProjectsDao),
+			stargate.NewStargateCollector(nil).Name(): NewSimpleInMatcher(svc.ProjectsDao),
+			synapse.NewSynapseCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
+		},*/
 		projects: map[string]model.Matcher{
-			anyswap.NewAnyswapCollector(nil).Name():   NewSimpleInMatcher(svc.Dao),
-			across.NewAcrossCollector().Name():        NewSimpleInMatcher(svc.Dao),
-			celer_bridge.NewCBridgeCollector().Name(): NewSimpleInMatcher(svc.Dao),
-			wormhole.NewWormHoleCollector(nil).Name(): NewSimpleInMatcher(svc.Dao),
-			stargate.NewStargateCollector(nil).Name(): NewSimpleInMatcher(svc.Dao),
-			synapse.NewSynapseCollector(nil).Name():   NewSimpleInMatcher(svc.Dao),
+			"anyswap": NewSimpleInMatcher(svc.ProjectsDao),
+			//"synapse": NewSimpleInMatcher(svc.ProjectsDao),
+			//"across":  NewSimpleInMatcher(svc.ProjectsDao),
 		},
 	}
 }
 
 func (m *Matcher) Start() {
-	for chain, matcher := range m.projects {
-		go m.StartMatch(chain, matcher)
+	for project, matcher := range m.projects {
+		go m.StartMatch(project, matcher)
 	}
 }
 
@@ -52,10 +51,11 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 	defer m.svc.Wg.Done()
 	log.Info("matcher start", "project", project)
 	timer := time.NewTimer(1 * time.Second)
-	var last uint64
+	var last = uint64(5654037)
 	for {
 		select {
 		case <-m.svc.Ctx.Done():
+			log.Info("match svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
 			latest, err := m.svc.Dao.LatestId(project)
@@ -97,16 +97,17 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 		panic("invalid matcher")
 	}
 	// fmt.Println(stmt)
-	var results model.Results
+	var results model.Datas
 	err = m.svc.Dao.DB().Select(&results, stmt, from, to)
 	if err != nil {
 		return
 	}
-	shouldUpdates, err := matcher.Match(results)
+
+	shouldUpdates, err := matcher.Match(project, results)
 	if err != nil {
 		return
 	}
-	err = m.svc.Dao.Update(shouldUpdates)
+	err = m.svc.Dao.Update(project, shouldUpdates)
 	if err != nil {
 		return
 	}

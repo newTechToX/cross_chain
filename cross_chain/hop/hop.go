@@ -3,7 +3,6 @@ package hop
 import (
 	"app/model"
 	"app/utils"
-	"encoding/json"
 	"math/big"
 )
 
@@ -32,20 +31,18 @@ func (a *Hop) Topics0(chain string) []string {
 		WithdrawalBonded, TransferFromL1Completed}
 }
 
-func (a *Hop) Extract(chain string, events model.Events) model.Results {
-	ret := make(model.Results, 0)
+func (a *Hop) Extract(chain string, events model.Events) model.Datas {
+	ret := make(model.Datas, 0)
 
 	for i := 0; i < len(events); i++ {
 		e := events[i]
 
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   e.Number,
-			Ts:       e.Ts,
 			Index:    e.Index,
 			Hash:     e.Hash,
 			ActionId: e.Id,
-			Project:  a.Name(),
 			Contract: e.Address,
 		}
 
@@ -114,11 +111,6 @@ func (a *Hop) Extract(chain string, events model.Events) model.Results {
 		} else if res.Direction == model.OutDirection {
 			fromChainId := new(big.Int).Set(utils.GetChainId(chain))
 			res.FromChainId = (*model.BigInt)(fromChainId)
-		}
-
-		detail, err := json.Marshal(d)
-		if err == nil {
-			res.Detail = detail
 		}
 
 		ret = append(ret, res)

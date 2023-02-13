@@ -3,7 +3,6 @@ package anyswap
 import (
 	"app/model"
 	"app/svc"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -38,17 +37,15 @@ func (a *Anyswap) Topics0(chain string) []string {
 	return []string{LogAnySwapIn, LogAnySwapOut}
 }
 
-func (a *Anyswap) Extract(chain string, events model.Events) model.Results {
-	ret := make(model.Results, 0)
+func (a *Anyswap) Extract(chain string, events model.Events) model.Datas {
+	ret := make(model.Datas, 0)
 	for _, e := range events {
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   e.Number,
-			Ts:       e.Ts,
 			Index:    e.Index,
 			Hash:     e.Hash,
 			ActionId: e.Id,
-			Project:  a.Name(),
 			Contract: e.Address,
 		}
 		switch e.Topics[0] {
@@ -65,13 +62,7 @@ func (a *Anyswap) Extract(chain string, events model.Events) model.Results {
 			res.Token = "0x" + e.Topics[2][26:]
 			amount, _ := new(big.Int).SetString(e.Data[2:2+64], 16)
 			res.Amount = (*model.BigInt)(amount)
-			d := &Detail{
-				SrcTxHash: e.Topics[1],
-			}
-			detail, err := json.Marshal(d)
-			if err == nil {
-				res.Detail = detail
-			}
+
 			res.MatchTag = e.Topics[1]
 
 		case LogAnySwapOut:

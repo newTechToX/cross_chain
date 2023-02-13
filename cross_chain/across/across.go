@@ -2,7 +2,6 @@ package across
 
 import (
 	"app/model"
-	"encoding/json"
 	"math/big"
 )
 
@@ -30,20 +29,18 @@ func (a *Across) Topics0(chain string) []string {
 	return []string{FundsDeposited, FilledRelay}
 }
 
-func (a *Across) Extract(chain string, events model.Events) model.Results {
-	ret := make(model.Results, 0)
+func (a *Across) Extract(chain string, events model.Events) model.Datas {
+	ret := make(model.Datas, 0)
 	len_out := 386
 	len_in := 834
 
 	for _, e := range events {
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   e.Number,
-			Ts:       e.Ts,
 			Index:    e.Index,
 			Hash:     e.Hash,
 			ActionId: e.Id,
-			Project:  a.Name(),
 			Contract: e.Address,
 		}
 
@@ -67,10 +64,6 @@ func (a *Across) Extract(chain string, events model.Events) model.Results {
 			d := &Detail{
 				DepositId: depositId,
 			}
-			detail, err := json.Marshal(d)
-			if err == nil {
-				res.Detail = detail
-			}
 			res.MatchTag = d.DepositId
 
 		case FilledRelay:
@@ -93,10 +86,6 @@ func (a *Across) Extract(chain string, events model.Events) model.Results {
 			d := &Detail{
 				DepositId: depositId,
 				Relayer:   relayer,
-			}
-			detail, err := json.Marshal(d)
-			if err == nil {
-				res.Detail = detail
 			}
 			res.MatchTag = d.DepositId
 		}

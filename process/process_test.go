@@ -9,7 +9,8 @@ import (
 	"time"
 )
 
-var d = dao.NewDao("postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/cross_chain?sslmode=disable")
+// var d = dao.NewDao("postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/cross_chain?sslmode=disable")
+var d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
 func TestProcess_ProcessMultiMatched(t *testing.T) {
 	a := Processor{}
@@ -137,4 +138,33 @@ func TestProcessor_UpdateRisk(t *testing.T) {
 		go m.UpdateRisk(d, datas[i:i+size])
 	}
 	m.UpdateRisk(d, datas[i:])
+}
+
+func TestP(t *testing.T) {
+	stmt := "select * from anyswap where direction = 'out' and match_tag =''"
+	data := []*model.Data{}
+	err := d.DB().Select(&data, stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+	println(len(data))
+
+	//size := len(data) / 200
+	//i := 0
+	/*
+		for ; i < len(data)-2*size; i = i + size {
+			go f(data[i : i+size])
+		}*/
+	f(data)
+}
+
+func f(data model.Datas) {
+	for _, i := range data {
+		stmt := fmt.Sprintf("update anyswap set match_tag = hash where id=%d", i.Id)
+		_, err := d.DB().Exec(stmt)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	fmt.Println("done: ", data[len(data)-1].Id)
 }

@@ -37,11 +37,11 @@ func (r *RenBridge) Selectors(chain string) []string {
 	return []string{Burn, Mint}
 }
 
-func (r *RenBridge) Extract(chain string, msgs []*model.Call) model.Results {
+func (r *RenBridge) Extract(chain string, msgs []*model.Call) model.Datas {
 	if _, ok := contracts[chain]; !ok {
 		return nil
 	}
-	ret := make(model.Results, 0)
+	ret := make(model.Datas, 0)
 	for _, msg := range msgs {
 		if _, ok := contracts[chain][msg.To]; !ok {
 			continue
@@ -55,14 +55,12 @@ func (r *RenBridge) Extract(chain string, msgs []*model.Call) model.Results {
 			log.Error("decode ren bridge failed", "chain", chain, "hash", msg.Hash, "err", err)
 			continue
 		}
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   msg.Number,
-			Ts:       msg.Ts,
 			Index:    msg.Index,
 			Hash:     msg.Hash,
 			ActionId: msg.Id,
-			Project:  r.Name(),
 			Contract: msg.To,
 			// non common
 			Token: contracts[chain][msg.To].Token,

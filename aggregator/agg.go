@@ -104,7 +104,7 @@ func (a *Aggregator) DoJob(c model.Colletcor) {
 
 func (a *Aggregator) Work(c model.Colletcor, from, to uint64) (int, error) {
 	var totalFetched int
-	var results model.Results
+	var results model.Datas
 	addrs := c.Contracts(a.chain)
 	if len(addrs) == 0 {
 		return 0, nil

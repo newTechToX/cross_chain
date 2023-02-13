@@ -71,13 +71,13 @@ func (a *Processor) ProcessHopMultiMatched(d *dao.Dao, project_name string) erro
 				amount_out, _ := ee.Amount.Value()
 
 				if !visited[ee.Id] && amount_in == amount_out && chain_in == chain_out {
-					diff := e.Ts.Sub(ee.Ts)
+					/*diff := e.Ts.Sub(ee.Ts)
 					if diff.Hours() == 0 {
 						d.UpdateMatchId(e.Id, ee.Id)
 						d.UpdateMatchId(ee.Id, e.Id)
 						visited[ee.Id] = true
 						break
-					}
+					}*/
 				}
 			}
 		}
@@ -243,7 +243,7 @@ func (a *Processor) AddAnyswap() (int, error) {
 		fmt.Println(err)
 		return 0, err
 	}
-	var results model.Results
+	var results model.Datas
 	totalFetched := 0
 	any := &anyswap.Anyswap{}
 	topics0 := any.Topics0(a.chain)

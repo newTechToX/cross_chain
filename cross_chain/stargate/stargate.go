@@ -4,14 +4,12 @@ import (
 	"app/model"
 	"app/svc"
 	"app/utils"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -82,11 +80,11 @@ func (a *Stargate) Topics0(chain string) []string {
 		SendToChain, SwapRemote, PacketReceived, ReceiveFromChain}
 }
 
-func (a *Stargate) Extract(chain string, events model.Events) model.Results {
+func (a *Stargate) Extract(chain string, events model.Events) model.Datas {
 	if _, ok := StargateContracts[chain]; !ok {
 		return nil
 	}
-	ret := make(model.Results, 0)
+	ret := make(model.Datas, 0)
 
 	outPairs := FindParis(events, Swap, SendMsg)
 	for _, outPair := range outPairs {
@@ -96,14 +94,12 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Results {
 		if len(outPair[1].Topics) != 1 || len(outPair[1].Data) < 2+2*64 {
 			continue
 		}
-		res := &model.Result{
+		res := &model.Data{
 			Chain:       chain,
 			Number:      outPair[0].Number,
-			Ts:          outPair[0].Ts,
 			Index:       outPair[0].Index,
 			Hash:        outPair[0].Hash,
 			ActionId:    outPair[0].Id,
-			Project:     a.Name(),
 			Contract:    outPair[0].Address,
 			Direction:   model.OutDirection,
 			FromChainId: (*model.BigInt)(utils.GetChainId(chain)),
@@ -132,13 +128,6 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Results {
 		amount.Mul(amount, convRate)
 		res.Amount = (*model.BigInt)(amount)
 
-		detail := &OutDetail{
-			DstPoolId: utils.ParseStrToUint64("0x" + outPair[0].Data[2+64:2+64*2]),
-			Address:   outPair[1].Address,
-			MsgType:   utils.ParseStrToUint64(outPair[1].Data[:66]),
-			Nonce:     utils.ParseStrToUint64("0x" + outPair[1].Data[66:]),
-		}
-		res.Detail, _ = json.Marshal(detail)
 		nonce, _ := new(big.Int).SetString(outPair[1].Data[66:], 16)
 		res.MatchTag = nonce.String()
 		ret = append(ret, res)
@@ -152,14 +141,12 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Results {
 		if len(inPair[1].Topics) != 1 || len(inPair[1].Data) < 2+4*64 {
 			continue
 		}
-		res := &model.Result{
+		res := &model.Data{
 			Chain:     chain,
 			Number:    inPair[1].Number,
-			Ts:        inPair[1].Ts,
 			Index:     inPair[1].Index,
 			Hash:      inPair[1].Hash,
 			ActionId:  inPair[1].Id,
-			Project:   a.Name(),
 			Contract:  inPair[1].Address,
 			Direction: model.InDirection,
 			ToChainId: (*model.BigInt)(utils.GetChainId(chain)),
@@ -193,22 +180,13 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Results {
 			log.Error("stargate: invalid PacketReceived log", "chain", chain, "hash", inPair[1].Hash)
 			continue
 		}
-		srcAddress, ok := datas[0].([]byte)
-		if !ok {
-			log.Error("stargate: invalid PacketReceived log", "chain", chain, "hash", inPair[1].Hash)
-			continue
-		}
+		//srcAddress, ok := datas[0].([]byte)
+		//continue
 		nonce, ok := datas[1].(uint64)
 		if !ok {
 			log.Error("stargate: invalid PacketReceived log", "chain", chain, "hash", inPair[1].Hash)
 			continue
 		}
-		d := &InDetail{
-			SrcAddress: hexutil.Encode(srcAddress),
-			DstAddress: "0x" + inPair[0].Topics[2][26:],
-			Nonce:      nonce,
-		}
-		res.Detail, _ = json.Marshal(d)
 		res.MatchTag = strconv.FormatUint(nonce, 10)
 		ret = append(ret, res)
 	}

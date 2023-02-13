@@ -8,11 +8,11 @@ type Colletcor interface {
 type EventCollector interface {
 	Colletcor
 	Topics0(chain string) []string
-	Extract(chain string, events Events) Results
+	Extract(chain string, events Events) Datas
 }
 
 type MsgCollector interface {
 	Colletcor
 	Selectors(chain string) []string
-	Extract(chain string, msgs []*Call) Results
+	Extract(chain string, msgs []*Call) Datas
 }

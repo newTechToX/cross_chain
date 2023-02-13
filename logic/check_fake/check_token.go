@@ -11,34 +11,38 @@ import (
 	"log"
 )
 
-type Check struct {
+type Checker struct {
 	svc      *svc.ServiceContext
 	aml      *aml.AML
 	provider *provider.Provider
 }
 
-func NewChecker(svc *svc.ServiceContext, chain, path string) *Check {
+const (
+	NULL_IN_DATABASE = -1
+	FAKE_TOKEN       = 1
+	SAFE_TOKEN       = 0
+)
+
+func NewChecker(svc *svc.ServiceContext, chain, path string) *Checker {
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
 	}
-	return &Check{
+	return &Checker{
 		svc:      svc,
 		aml:      aml.NewAML(path),
 		provider: p,
 	}
 }
 
-func (c *Check) Aml() *aml.AML {
+func (c *Checker) Aml() *aml.AML {
 	if c.aml == nil {
 		c.aml = aml.NewAML("../txt_config.yaml")
 	}
 	return c.aml
 }
 
-const null_in_database, is_fake, not_fake = -1, 1, 0
-
-func (a *Check) IsFakeToken(project string, tokens model.TokenChains) map[string]int {
+func (a *Checker) IsFakeToken(project string, tokens model.Datas) map[string]int {
 	var res = make(map[string]int)
 	for _, t := range tokens {
 		res_table := a.queryTable(project, t)
@@ -47,7 +51,7 @@ func (a *Check) IsFakeToken(project string, tokens model.TokenChains) map[string
 
 		switch res_table {
 		//如果不在数据库中，就查询aml
-		case null_in_database:
+		case NULL_IN_DATABASE:
 			tw := []string{t.Token}
 			info_from_aml, err := a.aml.QueryAml(t.Chain, tw)
 			if err != nil {
@@ -81,9 +85,9 @@ func (a *Check) IsFakeToken(project string, tokens model.TokenChains) map[string
 					utils.LogPrint(s, "./risk.log")
 				} else { // 如果查到了deployer的信息，若name前缀 == "Multichain"
 					if deployer_info_aml[deployer_info_from_provider.Deployer][0].Name[:10] == "Multichain" {
-						res[t.Token] = not_fake
+						res[t.Token] = SAFE_TOKEN
 					} else {
-						res[t.Token] = is_fake
+						res[t.Token] = FAKE_TOKEN
 						s := fmt.Sprintf("IsFakeToken(): deployer risk, chain:%s, address:%s, name:%s",
 							t.Chain, deployer_info_from_provider.Deployer, deployer_info_aml[deployer_info_from_provider.Deployer][0].Name)
 						log.Println(s)
@@ -91,42 +95,42 @@ func (a *Check) IsFakeToken(project string, tokens model.TokenChains) map[string
 					}
 				}
 			} else if info_from_aml[t.Token][0].Risk >= 3 { // 如果从aml里查到了token的标签
-				res[t.Token] = is_fake
+				res[t.Token] = FAKE_TOKEN
 				s := fmt.Sprintf("IsFakeToken(): token risk %d, chain:%s, address:%s, name:%s",
 					info_from_aml[t.Token][0].Risk, t.Chain, t.Token, info_from_aml[t.Token][0].Name)
 				log.Println(s)
 				utils.LogPrint(s, "./risk.log")
 			} else {
-				res[t.Token] = not_fake
+				res[t.Token] = SAFE_TOKEN
 			}
 			break
 
-		case is_fake:
+		case FAKE_TOKEN:
 			s := fmt.Sprintf("IsFakeToken(): fake token: fake token in database, chain:%s, address:%s", t.Chain, t.Token)
 			log.Println(s)
 			utils.LogPrint(s, "./risk.log")
 			break
 
-		case not_fake:
+		case SAFE_TOKEN:
 			break
 		}
 	}
 	return res
 }
 
-func (a *Check) queryTable(project string, t *model.TokenChain) int {
-	stmt := fmt.Sprintf("select isfaketoken from %s where chain = '%s' and token = '%s' and block_number<%d", project, t.Chain, t.Token, t.Block)
+func (a *Checker) queryTable(project string, t *model.Data) int {
+	stmt := fmt.Sprintf("select isfaketoken from %s where chain = '%s' and token = '%s' and block_number<%d", project, t.Chain, t.Token, t.Number)
 	var fake sql.NullInt32
 	err := a.svc.ProjectsDao.DB().Get(&fake, stmt)
 	if err != nil {
 		s := fmt.Sprintf("Check_token(): failed to query token from table, chain:%s, address:%s", t.Chain, t.Token)
 		utils.LogPrint(s, "./logic.log")
-		return null_in_database
+		return NULL_IN_DATABASE
 	}
 
 	if fake.Valid && fake.Int32 == 1 {
-		return is_fake
+		return FAKE_TOKEN
 	} else {
-		return not_fake
+		return SAFE_TOKEN
 	}
 }

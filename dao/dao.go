@@ -20,11 +20,11 @@ const (
 )
 
 var (
-	resultInsertFieldNames = builder.RawFieldNames(&model.Result{}, true)
+	resultInsertFieldNames = builder.RawFieldNames(&model.Data{}, true)
 	resultInsertRows       = strings.Join(stringx.Remove(resultInsertFieldNames, "id", "match_id"), ",")
 	resultInsertTags       = strings.Join(slicesWithPrefix(stringx.Remove(resultInsertFieldNames, "id", "match_id"), ":"), ",")
 
-	resultUpdateFieldNames = []string{"match_id", "from_chain_id", "from_address", "to_chain_id", "to_address"}
+	resultUpdateFieldNames = []string{"match_id", "from_chain", "from_address", "to_chain", "to_address"}
 	resultUpdateRows       = strings.Join(resultUpdateFieldNames, ",")
 	resultUpdateTags       = builder.PostgreSqlJoin(resultUpdateFieldNames)
 	// resultUpdateWithPlaceholders = builder.PostgreSqlJoin(resultUpdateFieldNames)
@@ -71,8 +71,8 @@ func NewAnyDao(host string) *Dao {
 }
 
 func (d *Dao) LatestId(project string) (latest uint64, err error) {
-	stmt := fmt.Sprintf("select max(id) from %s where project = $1", d.table)
-	err = d.db.Get(&latest, stmt, project)
+	stmt := fmt.Sprintf("select max(id) from %s", project)
+	err = d.db.Get(&latest, stmt)
 	return
 }
 
@@ -96,7 +96,7 @@ func (d *Dao) GetContractInfos(project string) (model.ContractInfos, error) {
 	return res, nil
 }
 
-func (d *Dao) Save(results model.Results) (err error) {
+func (d *Dao) Save(results model.Datas) (err error) {
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return
@@ -125,21 +125,16 @@ func (d *Dao) Save(results model.Results) (err error) {
 	return nil
 }
 
-func (d *Dao) save(tx *sqlx.Tx, results model.Results) error {
+func (d *Dao) save(tx *sqlx.Tx, results model.Datas) error {
 	if len(results) == 0 {
 		return nil
-	}
-	for _, r := range results {
-		if len(r.Detail) == 0 {
-			r.Detail = []byte(`{}`)
-		}
 	}
 	stmt := fmt.Sprintf("insert into %s (%s) values (%s)", d.table, resultInsertRows, resultInsertTags)
 	_, err := tx.NamedExec(stmt, results)
 	return err
 }
 
-func (d *Dao) Update(results model.Results) (err error) {
+func (d *Dao) Update(project string, results model.Datas) (err error) {
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return
@@ -155,20 +150,7 @@ func (d *Dao) Update(results model.Results) (err error) {
 			err = tx.Commit()
 		}
 	}()
-	// "match_id", "from_chain_id", "from_address", "to_chain_id", "to_address"
-	// args := make([]map[string]any, 0)
-	// for _, r := range results {
-	// 	args = append(args, map[string]any{
-	// 		"match_id":      r.MatchId,
-	// 		"from_chain_id": r.FromChainId,
-	// 		"from_address":  r.FromAddress,
-	// 		"to_chain_id":   r.ToChainId,
-	// 		"to_address":    r.ToAddress,
-	// 		"id":            r.Id,
-	// 	})
-	// }
-	stmt := fmt.Sprintf("update %s set %s where id = $1", d.table, resultUpdateTags)
-	// fmt.Println(stmt)
+	stmt := fmt.Sprintf("update %s set %s where id = $1", project, resultUpdateTags)
 	for _, r := range results {
 		_, err = d.db.Exec(stmt, r.Id, r.MatchId, r.FromChainId, r.FromAddress, r.ToChainId, r.ToAddress)
 		if err != nil {
@@ -200,12 +182,12 @@ func (d *Dao) LastUpdate(chain, project string) (uint64, error) {
 // @param	projectName	string	the project name
 // @param
 // @return	complete infomation of the data
-func (d *Dao) SelectProject(projectName, direct, empty string) []model.Result {
+func (d *Dao) SelectProject(projectName, direct, empty string) []model.Data {
 	if len(projectName) == 0 || len(direct) == 0 {
 		return nil
 	}
 
-	res := []model.Result{}
+	res := []model.Data{}
 
 	var err error
 	if empty == "false" {
@@ -237,10 +219,10 @@ func (d *Dao) SelectProject(projectName, direct, empty string) []model.Result {
 // @auth	Hu xiaohui
 // @param	id, hash, match_id
 // @return	complete infomation of the data
-func (d *Dao) GetOne(id uint64, hash string, matchId int64) (model.Results, error) {
-	var res model.Results
-	var res_ model.Results
-	var _res model.Results
+func (d *Dao) GetOne(id uint64, hash string, matchId int64) (model.Datas, error) {
+	var res model.Datas
+	var res_ model.Datas
+	var _res model.Datas
 
 	var err error
 	if id >= 0 {
@@ -298,8 +280,8 @@ func (d *Dao) MarkUnsafeWithToken(chain, token string) error {
 	return err
 }
 
-func (d *Dao) GetDataWithTag(direction, project_name, match_tag string) []*model.Result {
-	var res model.Results
+func (d *Dao) GetDataWithTag(direction, project_name, match_tag string) []*model.Data {
+	var res model.Datas
 	stmt := "select * from " + d.table + " where direction=$1 and project=$2 and match_tag=$3 " +
 		"and (to_chain_id=1 or to_chain_id=10 or to_chain_id=56 or to_chain_id=137 or to_chain_id=250 or to_chain_id=42161 or to_chain_id=43114) order by ts asc"
 	err := d.db.Select(&res, stmt, direction, project_name, match_tag)
@@ -309,8 +291,8 @@ func (d *Dao) GetDataWithTag(direction, project_name, match_tag string) []*model
 	return res
 }
 
-func (d *Dao) GetDataWithToken(project, token string) model.Results {
-	var res model.Results
+func (d *Dao) GetDataWithToken(project, token string) model.Datas {
+	var res model.Datas
 	stmt := fmt.Sprintf("select * from %s where project='%s' and token='%s'", d.table, project, token)
 	err := d.db.Select(&res, stmt)
 	if err != nil {
@@ -319,10 +301,10 @@ func (d *Dao) GetDataWithToken(project, token string) model.Results {
 	return res
 }
 
-func (d *Dao) GetOneMatched(data model.Result) ([]model.Result, error) {
-	var res []model.Result
+func (d *Dao) GetOneMatched(data model.Data) ([]model.Data, error) {
+	var res []model.Data
 	stmt := "select * from " + d.Table() + " where project = $1 and to_chain_id = $1 and match_tag = $3 and id != $4"
-	err := d.db.Select(&res, stmt, data.Project, data.ToChainId, data.MatchTag, data.Id)
+	err := d.db.Select(&res, stmt, data.ToChainId, data.MatchTag, data.Id)
 	return res, err
 }
 
@@ -431,7 +413,7 @@ func (d *Dao) GetAnyWithToken(token string) ([]*model.Data, error) {
 	return res, err
 }
 
-func (d *Dao) SaveAnyswap(results model.Results) (err error) {
+func (d *Dao) SaveAnyswap(results model.Datas) (err error) {
 	var datas []*model.Data
 	for _, r := range results {
 		data := &model.Data{
@@ -444,9 +426,9 @@ func (d *Dao) SaveAnyswap(results model.Results) (err error) {
 			Contract:    r.Contract,
 			Direction:   r.Direction,
 			FromAddress: r.FromAddress,
-			FromChainId: r.FromChainId.String(),
+			FromChainId: r.FromChainId,
 			ToAddress:   r.ToAddress,
-			ToChainId:   r.ToChainId.String(),
+			ToChainId:   r.ToChainId,
 			Token:       r.Token,
 			Amount:      r.Amount,
 			MatchTag:    r.MatchTag,

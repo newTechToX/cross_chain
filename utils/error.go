@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	log2 "github.com/ethereum/go-ethereum/log"
 	"log"
 	"os"
 	"reflect"
@@ -43,4 +44,16 @@ func LogPrint(info, file_path string) {
 
 	log.SetOutput(file)
 	log.Println(info)
+}
+
+func LogWarn(info, file_path string) {
+	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer file.Close()
+
+	log.SetOutput(file)
+	log2.Warn(info)
 }

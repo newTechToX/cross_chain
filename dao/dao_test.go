@@ -27,7 +27,7 @@ func TestGet(t *testing.T) {
 
 	stmt := "SELECT * FROM common_cross_chain WHERE id = $1"
 
-	res := model.Result{}
+	res := model.Data{}
 	// _ = d.db.Get(&res, stmt, 1156329)
 	// fmt.Println(res.Id, res.Chain, res.Hash, res.MatchId, res.MatchTag)
 
@@ -74,5 +74,3 @@ func TestDa(t *testing.T) {
 		println(fmt.Println(err))
 	}
 }
-
-//1135080

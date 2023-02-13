@@ -5,7 +5,6 @@ import (
 	"app/svc"
 	"app/utils"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -48,11 +47,11 @@ func (w *WormHole) Selectors(chain string) []string {
 		CompleteTransfer, CompleteTransferAndUnwrapETH, CompleteTransferWithPayload, CompleteTransferAndUnwrapETHWithPayload}
 }
 
-func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Results {
+func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Datas {
 	if _, ok := contracts[chain]; !ok {
 		return nil
 	}
-	ret := make(model.Results, 0)
+	ret := make(model.Datas, 0)
 	for _, msg := range msgs {
 		if _, ok := contracts[chain][msg.To]; !ok {
 			continue
@@ -66,14 +65,12 @@ func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Results {
 			log.Error("decode wormwhole failed", "chain", chain, "hash", msg.Hash, "err", err)
 			continue
 		}
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   msg.Number,
-			Ts:       msg.Ts,
 			Index:    msg.Index,
 			Hash:     msg.Hash,
 			ActionId: msg.Id,
-			Project:  w.Name(),
 			Contract: msg.To,
 		}
 		switch sig {
@@ -125,8 +122,6 @@ func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Results {
 				continue
 			}
 			res.MatchTag = strconv.FormatUint(uint64(nonce), 10)
-			d := &OutDetail{Nonce: nonce}
-			res.Detail, _ = json.Marshal(d)
 
 		case WrapAndTransferETH, WrapAndTransferETHWithPayload:
 			res.Direction = model.OutDirection
@@ -157,8 +152,6 @@ func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Results {
 				continue
 			}
 			res.MatchTag = strconv.FormatUint(uint64(nonce), 10)
-			d := &OutDetail{Nonce: nonce}
-			res.Detail, _ = json.Marshal(d)
 
 		case CompleteTransfer, CompleteTransferAndUnwrapETH, CompleteTransferWithPayload, CompleteTransferAndUnwrapETHWithPayload:
 			res.Direction = model.InDirection
@@ -210,8 +203,6 @@ func (w *WormHole) Extract(chain string, msgs []*model.Call) model.Results {
 			res.ToAddress = truncateAddress(transferPayload.To)
 			res.FromAddress = truncateAddress(transferPayload.FromAddress)
 			res.MatchTag = strconv.FormatUint(uint64(vaa.Nonce), 10)
-			detail, _ := json.Marshal(vaa)
-			res.Detail = detail
 		default:
 			continue
 		}

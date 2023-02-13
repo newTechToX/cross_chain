@@ -5,7 +5,6 @@ import (
 	"app/svc"
 	"app/utils"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -49,11 +48,11 @@ func (w *Synapse) Selectors(chain string) []string {
 		swapAndRedeemAndSwap, swapETHAndRedeem}
 }
 
-func (w *Synapse) Extract(chain string, msgs []*model.Call) model.Results {
+func (w *Synapse) Extract(chain string, msgs []*model.Call) model.Datas {
 	if _, ok := contracts[chain]; !ok {
 		return nil
 	}
-	ret := make(model.Results, 0)
+	ret := make(model.Datas, 0)
 	for _, msg := range msgs {
 		if _, ok := contracts[chain][msg.To]; !ok {
 			continue
@@ -70,14 +69,12 @@ func (w *Synapse) Extract(chain string, msgs []*model.Call) model.Results {
 				continue
 			}
 		}
-		res := &model.Result{
+		res := &model.Data{
 			Chain:    chain,
 			Number:   msg.Number,
-			Ts:       msg.Ts,
 			Index:    msg.Index,
 			Hash:     msg.Hash,
 			ActionId: msg.Id,
-			Project:  w.Name(),
 			Contract: msg.To,
 		}
 		var kappa string
@@ -116,8 +113,6 @@ func (w *Synapse) Extract(chain string, msgs []*model.Call) model.Results {
 			res.Amount = (*model.BigInt)(amount)
 			kappa = crypto.Keccak256Hash([]byte(res.Hash)).String()
 			res.MatchTag = kappa
-			d := &Detail{Kappa: kappa}
-			res.Detail, _ = json.Marshal(d)
 
 		case deposit, depositAndSwap, redeem, redeemv2, redeemAndSwap, redeemAndRemove:
 			if len(params) < 4 {
@@ -186,8 +181,6 @@ func (w *Synapse) Extract(chain string, msgs []*model.Call) model.Results {
 				continue
 			}
 			res.MatchTag = kappa
-			d := &Detail{Kappa: (kappa)}
-			res.Detail, _ = json.Marshal(d)
 			/*
 				case CompleteTransfer, CompleteTransferAndUnwrapETH, CompleteTransferWithPayload, CompleteTransferAndUnwrapETHWithPayload:
 					res.Direction = model.InDirection

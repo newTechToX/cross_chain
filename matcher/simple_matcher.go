@@ -26,15 +26,15 @@ func NewSimpleInMatcher(dao *dao.Dao) *SimpleInMatcher {
 // inputs: cross-in txs
 // require: to_chain_id in cross-out must exist
 // matched: match_tags equal
-func (m *SimpleInMatcher) Match(crossIns []*model.Result) (shouldUpdates model.Results, err error) {
+func (m *SimpleInMatcher) Match(project string, crossIns []*model.Data) (shouldUpdates model.Datas, err error) {
 	for _, crossIn := range crossIns {
 		if crossIn.Direction != model.InDirection {
 			log.Warn("matching should not input cross-out")
 			continue
 		}
-		var pending model.Results
-		stmt := fmt.Sprintf("select * from %s where match_tag = $1 and project = $2 and direction = '%s' and to_chain_id = $3", m.dao.Table(), model.OutDirection)
-		err := m.dao.DB().Select(&pending, stmt, crossIn.MatchTag, crossIn.Project, utils.GetChainId(crossIn.Chain).String())
+		var pending model.Datas
+		stmt := fmt.Sprintf("select * from %s where match_tag = $1 and direction = '%s' and to_chain = $2", project, model.OutDirection)
+		err := m.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String())
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ func (m *SimpleInMatcher) Match(crossIns []*model.Result) (shouldUpdates model.R
 		// if len(pending) > 1 {
 		// 	log.Error("multi matched", "src", crossIn.Hash)
 		// }
-		valid := make(model.Results, 0)
+		valid := make(model.Datas, 0)
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
 				continue
@@ -53,7 +53,7 @@ func (m *SimpleInMatcher) Match(crossIns []*model.Result) (shouldUpdates model.R
 			fillEmptyFields(counterparty, crossIn)
 		}
 		if len(valid) > 1 {
-			log.Error("multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", crossIn.Project)
+			log.Error("multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", project)
 		} else {
 			shouldUpdates = append(shouldUpdates, crossIn)
 			shouldUpdates = append(shouldUpdates, valid...)
@@ -62,7 +62,7 @@ func (m *SimpleInMatcher) Match(crossIns []*model.Result) (shouldUpdates model.R
 	return
 }
 
-func isMatched(out, in *model.Result) bool {
+func isMatched(out, in *model.Data) bool {
 	if out.ToChainId != nil {
 		if (*big.Int)(out.ToChainId).Cmp(utils.GetChainId(in.Chain)) != 0 {
 			return false
@@ -83,7 +83,7 @@ func isMatched(out, in *model.Result) bool {
 	return true
 }
 
-func fillEmptyFields(out, in *model.Result) {
+func fillEmptyFields(out, in *model.Data) {
 	if out == nil || in == nil || out.Direction != model.OutDirection || in.Direction != model.InDirection {
 		log.Error("invalid match pair")
 		return
