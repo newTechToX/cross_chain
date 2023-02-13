@@ -12,10 +12,9 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
 	a := &Logic{}
-	re := &replay.Replayer{}
-	a.replayer = re.NewReplayer()
+	a.replayer = replay.NewReplayer("./txt_config.yaml")
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
-	id := 335098
+	id := 445126
 	//stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)
 	stmt := fmt.Sprintf("select * from anyswap where id = %d", id)
 
@@ -42,8 +41,7 @@ func Test1(t *testing.T) {
 func TestIf(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 	a := &Logic{}
-	re := &replay.Replayer{}
-	a.replayer = re.NewReplayer()
+	a.replayer = replay.NewReplayer("./txt_config.yaml")
 	stmt := fmt.Sprintf("select * from anyswap where direction='out' and (chain='ethereum' or chain='bsc') and isfaketoken is null limit 12000")
 	var datas = []*model.Data{}
 	err := d.DB().Select(&datas, stmt)
@@ -60,8 +58,7 @@ func TestIf(t *testing.T) {
 }
 
 func ifTokenSourceOnly1(datas []*model.Data) {
-	re := &replay.Replayer{}
-	r := re.NewReplayer()
+	r := replay.NewReplayer("./txt_config.yaml")
 	for i, d := range datas {
 		tx, err := r.Replay(d)
 		if err != nil {
@@ -80,8 +77,7 @@ func ifTokenSourceOnly1(datas []*model.Data) {
 }
 
 func ifFromTransferOnly1(datas []*model.Data) {
-	re := &replay.Replayer{}
-	r := re.NewReplayer()
+	r := replay.NewReplayer("./txt_config.yaml")
 	for i, d := range datas {
 		tx, err := r.Replay(d)
 		if err != nil {
@@ -118,8 +114,7 @@ func selectData(st string, id int) []*model.Data {
 func TestLogic_getPreviousToken(t *testing.T) {
 	id := 4266976
 	a := &Logic{}
-	re := &replay.Replayer{}
-	a.replayer = re.NewReplayer()
+	a.replayer = replay.NewReplayer("./txt_config.yaml")
 	datas := selectData("", id)
 	tx, err := a.replayer.Replay(datas[0])
 	if err != nil {
@@ -136,8 +131,7 @@ func TestLogic_getPreviousToken(t *testing.T) {
 func TestCheckFromWithSwap(t *testing.T) {
 	id := 4266362
 	a := &Logic{}
-	re := &replay.Replayer{}
-	a.replayer = re.NewReplayer()
+	a.replayer = replay.NewReplayer("./txt_config.yaml")
 	datas := selectData("", id)
 	data := datas[0]
 	tx, err := a.replayer.Replay(datas[0])
@@ -175,8 +169,7 @@ func TestLogic_TokenProfitError1(t *testing.T) {
 
 func test_token_error_1(datas []*model.Data) {
 	a := &Logic{}
-	re := &replay.Replayer{}
-	a.replayer = re.NewReplayer()
+	a.replayer = replay.NewReplayer("./txt_config.yaml")
 
 	for _, d := range datas {
 		tx, err := a.replayer.Replay(d)

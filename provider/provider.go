@@ -89,6 +89,9 @@ func NewProviders(cfg *config.Config) *Providers {
 }
 
 func (p *Providers) Get(chain string) *Provider {
+	if chain == "ethereum" {
+		chain = "eth"
+	}
 	if val, ok := p.providers[chain]; ok {
 		return val
 	}

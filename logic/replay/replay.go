@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"app/config"
 	"app/model"
 	"app/utils"
 	"encoding/json"
@@ -9,7 +10,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,11 +17,15 @@ import (
 
 type Replayer struct {
 	url string
+	key string
 }
 
-func (a *Replayer) NewReplayer() *Replayer {
+func NewReplayer(path string) *Replayer {
+	var cfg Config
+	config.LoadCfg(&cfg, path)
 	return &Replayer{
 		url: "https://api.blocksec.com/v1/phalcon/simulate/hash",
+		key: cfg.ReplayAccessToken,
 	}
 }
 
@@ -34,7 +38,7 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 	}
 	body := Body{}
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(6 * time.Second)
 	buffer, err := a.replay(data)
 	if err != nil {
 		return nil, err
@@ -63,18 +67,6 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 
 func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 	var err error
-	token, err := os.ReadFile("./logic/replay/token.txt")
-	if err != nil {
-		token, err = os.ReadFile("./replay/token.txt")
-		if err != nil {
-			token, err = os.ReadFile("./token.txt")
-			if err != nil {
-				log.Error("failed to open token.txt")
-				return nil, err
-			}
-		}
-	}
-
 	hash := []string{data.Hash}
 	id, _ := strconv.Atoi(utils.GetChainId(data.Chain).String())
 	b, _ := json.Marshal(map[string]interface{}{
@@ -84,7 +76,7 @@ func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 		"bundle":   hash,
 	})
 	req, err := http.NewRequest("POST", a.url, strings.NewReader(string(b)))
-	req.Header.Set("Access-Token", string(token))
+	req.Header.Set("Access-Token", a.key)
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := (&http.Client{}).Do(req)
 	if err != nil {

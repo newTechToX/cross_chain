@@ -29,8 +29,7 @@ import (
 }*/
 
 func TestReplayer_CalValue(t *testing.T) {
-	re := &Replayer{}
-	r := re.NewReplayer()
+	r := NewReplayer("../txt_config.yaml")
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 	hash := "0xc33f6c406f1172c01d0b987237624f2cbe1021fe721da0d2fb07b31553edb684"
 	stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)

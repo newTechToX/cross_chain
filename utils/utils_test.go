@@ -90,3 +90,31 @@ func TestGetCsv(t *testing.T) {
 
 	fmt.Println(records)
 }
+
+type ReturnData struct {
+	Labels *Labels `json:"labels"`
+	Risk   int     `json:"risk"`
+}
+
+type Labels struct {
+	NameTag *string `json:"name_tag"`
+	slkfdj  int
+}
+
+func TestIsEmpty(t *testing.T) {
+	a := &ReturnData{&Labels{nil, 1}, 4}
+	b := &ReturnData{nil, 1}
+	if IsEmpty(a.Labels) {
+		println("a.Labels")
+	}
+	if IsEmpty(b.Labels) {
+		println("b")
+	}
+}
+
+func TestMax(t *testing.T) {
+	a := []int{
+		1, 2, 3, 4, 5,
+	}
+	println(Max(a...))
+}

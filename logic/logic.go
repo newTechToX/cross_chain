@@ -2,6 +2,8 @@ package logic
 
 import (
 	"app/dao"
+	"app/logic/aml"
+	"app/logic/check_fake"
 	"app/logic/replay"
 	"app/model"
 	"app/provider"
@@ -18,6 +20,8 @@ type Logic struct {
 	svc      *svc.ServiceContext
 	provider *provider.Provider
 	replayer *replay.Replayer
+	aml      *aml.AML
+	checker  *check_fake.Check
 }
 
 type Tags struct {
@@ -25,6 +29,7 @@ type Tags struct {
 	ToAddressProfit  int
 	TokenProfitError int
 	IsFakeToken      int
+	Risk             int
 }
 
 const from_token_amount, from_token_type, from_transfer_error = 1, 2, 3
@@ -33,9 +38,15 @@ const from_token_amount, from_token_type, from_transfer_error = 1, 2, 3
 // other...意味着token获利金额与amount参数一致，
 const token_profit_minus_amount, other_address_profit = 2, 1
 
-func NewLogic(svc *svc.ServiceContext, chain string) *Logic {
+const profit_address_not_found_label = 6
+
+func NewLogic(svc *svc.ServiceContext, chain string, path string) *Logic {
+	if path == "" {
+		path = "./txt_config.yaml"
+	}
 	p := svc.Providers.Get(chain)
-	r := (&replay.Replayer{}).NewReplayer()
+	r := replay.NewReplayer(path)
+	c := check_fake.NewChecker(svc, chain, path)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
 	}
@@ -43,7 +54,28 @@ func NewLogic(svc *svc.ServiceContext, chain string) *Logic {
 		svc:      svc,
 		provider: p,
 		replayer: r,
+		checker:  c,
+		aml:      c.Aml(),
 	}
+}
+
+func (a *Logic) Main() {
+
+}
+
+func (a *Logic) CheckFake(table string) error {
+	stmt := fmt.Sprintf("select token, chain, block_number from %s where match_id is null and isfaketoken is null", table)
+	var datas model.TokenChains
+	var err error
+	err = a.svc.ProjectsDao.DB().Select(&datas, stmt)
+	if err != nil {
+		return err
+	}
+	println(len(datas))
+
+	a.checker.IsFakeToken(table, datas)
+
+	return err
 }
 
 func (a *Logic) ReplayOutTxLogic(table string) error {
@@ -56,7 +88,7 @@ func (a *Logic) ReplayOutTxLogic(table string) error {
 	}
 	println(len(datas))
 
-	size := 25000
+	size := len(datas) / 4
 	i := 0
 	for i = 0; i+size < len(datas); i = i + size {
 		go a.replayOutTxLogic(table, datas[i:i+size])
@@ -71,9 +103,9 @@ func (a *Logic) ReplayOutTxLogic(table string) error {
 func (a *Logic) replayOutTxLogic(table string, datas []*model.Data) (err error) {
 	for i, data := range datas {
 		//to = token
-		tag := Tags{0, 0, 0, 0}
+		tag := Tags{0, 0, 0, 0, 0}
 
-		var profit []*replay.SimAccountBalance
+		var profit []*aml.AddressInfo
 		if data.ToAddress == data.Token && !data.IsFakeToken.Valid {
 			tag.IsFakeToken = 2
 		}
@@ -141,24 +173,35 @@ func (a *Logic) replayOutTxLogic(table string, datas []*model.Data) (err error) 
 
 		//to_address不应该获利
 		idx := a.profitAccounts(tx.BalanceChanges)
+		addresses := []string{}
+
 		for i := range idx {
 			if tx.BalanceChanges[i].Account == data.ToAddress && data.Token != data.ToAddress {
 				println("toaddr_profit ", data.Hash)
 				tag.ToAddressProfit = 1
 			}
-
-			if tx.BalanceChanges[i].Account != data.ToAddress {
-				var d *dao.Dao
-				if a.svc == nil {
-					d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
-				} else {
-					d = a.svc.Dao
-				}
-				if safe, _ := d.QueryLabel(tx.BalanceChanges[i].Account); !safe {
-					profit = append(profit, tx.BalanceChanges[i])
-				}
-			}
+			addresses = append(addresses, tx.BalanceChanges[i].Account)
 		}
+
+		//查询所有非to_address的获利地址信息并记录下来
+		info, err := a.aml.QueryAml(data.Chain, addresses)
+		for _, labels := range info {
+			tag.Risk = labels[0].Risk
+			profit = append(profit, labels[0])
+		}
+		if info == nil {
+			for _, addr := range addresses {
+				profit = append(profit,
+					&aml.AddressInfo{
+						Chain:   data.Chain,
+						Address: addr,
+						Risk:    profit_address_not_found_label,
+					})
+			}
+			tag.Risk = profit_address_not_found_label
+		}
+
+		//检查token的获利是否符合
 		if tag.TokenProfitError != 1 {
 			if ok := a.checkTokenProfit(real_token, data.Amount, tx.BalanceChanges); ok != 0 {
 				println("token_profit_error ", data.Hash)
@@ -246,7 +289,8 @@ func (a *Logic) getRealToken(token string, balanceChanges []*replay.SimAccountBa
 		} else if e.Account == burn_address {
 			//从burn的地址里面找是否直接burn掉token
 			for _, ee := range e.Assets {
-				if ee.Address == token && ee.Amount[0] != '-' {
+				//if ee.Address == token && ee.Amount[0] != '-' {
+				if ee.Amount[0] != '-' {
 					underlying[ee.Address] = &DecAmount{
 						Amount:   ee.Amount,
 						Decimals: ee.Decimals,
@@ -342,7 +386,7 @@ balance change的逻辑 --> 检测所有cross=out（无论是否match）
 
 // 更新表字段
 var (
-	logicUpdateNames = []string{"from_address_error", "to_address_profit", "token_profit_error"}
+	logicUpdateNames = []string{"tag, from_address_error", "to_address_profit", "token_profit_error"}
 	logicUpdateRows  = strings.Join(logicUpdateNames, ",")
 	logicUpdateTags  = builder.PostgreSqlJoin(logicUpdateNames)
 )
@@ -358,7 +402,7 @@ func (a *Logic) logicUpdate(Id uint64, profit []byte, table string, tag Tags) er
 
 	stmt := fmt.Sprintf("update %s set %s, profit=$1 where id = %d", table, logicUpdateTags, Id)
 	// fmt.Println(stmt)
-	_, err = d.DB().Exec(stmt, profit, tag.FromAddressError, tag.ToAddressProfit, tag.TokenProfitError)
+	_, err = d.DB().Exec(stmt, profit, tag.Risk, tag.FromAddressError, tag.ToAddressProfit, tag.TokenProfitError)
 	if err != nil {
 		log.Error("update failed", "err", err)
 	}

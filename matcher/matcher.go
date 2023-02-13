@@ -91,7 +91,8 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	var stmt string
 	switch matcher.(type) {
 	case *SimpleInMatcher:
-		stmt = fmt.Sprintf("select * from %s where project = '%s' and direction = '%s' and id >= $1 and id <= $2 and match_id is null and match_tag not in ('0', '1', '2', '3', '4')", m.svc.Dao.Table(), project, model.InDirection)
+		//stmt = fmt.Sprintf("select * from %s where project = '%s' and direction = '%s' and id >= $1 and id <= $2 and match_id is null and match_tag not in ('0', '1', '2', '3', '4')", m.svc.Dao.Table(), project, model.InDirection)
+		stmt = fmt.Sprintf("select * from %s where direction = '%s' and id >= $1 and id <= $2 and match_id is null and match_tag not in ('0', '1', '2', '3', '4')", project, model.InDirection)
 	default:
 		panic("invalid matcher")
 	}

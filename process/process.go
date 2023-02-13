@@ -3,6 +3,8 @@ package processor
 import (
 	"app/cross_chain/anyswap"
 	"app/dao"
+	"app/logic/aml"
+	"app/logic/replay"
 	"app/model"
 	"app/provider"
 	"app/provider/chainbase"
@@ -491,4 +493,77 @@ func (m *Processor) MarkTxWithFakeToken(d *dao.Dao, project string) {
 			fmt.Println(err)
 		}
 	}
+}
+
+func (m *Processor) UpdateProfitAndRisk(da *dao.Dao, datas []*model.Data) {
+	amler := aml.NewAML("../logic/txt_config.yaml")
+	for i, d := range datas {
+		risks := []int{}
+		profit := []*replay.SimAccountBalance{}
+		err := json.Unmarshal(d.Profit, &profit)
+		if err != nil {
+			fmt.Println(err)
+		}
+		address := []string{}
+		for _, a := range profit {
+			address = append(address, a.Account)
+		}
+		info, err := amler.QueryAml(d.Chain, address)
+		var profit_ = []*aml.AddressInfo{}
+		for addr, labels := range info {
+			if labels == nil {
+				risks = append(risks, 6)
+				profit_ = append(profit_,
+					&aml.AddressInfo{
+						Chain:   d.Chain,
+						Address: addr,
+						Risk:    6,
+					})
+				continue
+			}
+			risks = append(risks, labels[0].Risk)
+			profit_ = append(profit_, labels[0])
+		}
+
+		//risk := utils.Max(risks...)
+		p, _ := json.Marshal(profit_)
+		if len(profit_) == 0 {
+			p = []byte(`{}`)
+		}
+
+		//da := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+		stmt := fmt.Sprintf("update anyswap set profit=$1 where id=%d", d.Id)
+		_, err = da.DB().Exec(stmt, p)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if i%50 == 0 && i != 0 {
+			println("done: ", i)
+		}
+	}
+	println("all done")
+}
+
+func (m *Processor) UpdateRisk(da *dao.Dao, datas []*model.Data) {
+	for _, d := range datas {
+		var profit = []*aml.AddressInfo{}
+		err := json.Unmarshal(d.Profit, &profit)
+		if err != nil || len(profit) == 0 ||
+			(len(profit) > 0 && profit[0].Address == "") {
+			continue
+		} else {
+			risks := []int{}
+			for _, e := range profit {
+				risks = append(risks, e.Risk)
+			}
+			risk := utils.Max(risks...)
+			stmt := fmt.Sprintf("update anyswap set tag='%d' where id=%d", risk, d.Id)
+			_, err = da.DB().Exec(stmt)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+	println("update risks all done")
 }

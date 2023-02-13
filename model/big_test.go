@@ -21,3 +21,9 @@ func TestBigFloat_SetString(t *testing.T) {
 	ee := e.ConvertToBigInt()
 	println(ee.String())
 }
+
+func Test1(y *testing.T) {
+	a := 990095
+	b := a / 3
+	println(b)
+}

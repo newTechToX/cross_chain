@@ -51,8 +51,8 @@ func main() {
 
 	config.LoadCfg(&cfg, "./config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
-	pr := logic.NewLogic(srvCtx, "arbitrum")
-	err = pr.ReplayOutTxLogic("anyswap")
+	l := logic.NewLogic(srvCtx, "arbitrum", "./logic/txt_config.yaml")
+	err = l.CheckFake("anyswap")
 	if err != nil {
 		fmt.Println(err)
 		return

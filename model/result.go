@@ -39,6 +39,7 @@ type MatchedIds []*MatchedId
 type TokenChain struct {
 	Token string `db:"token"`
 	Chain string `db:"chain"`
+	Block uint64 `db:"block_number"`
 }
 
 type TokenChains []*TokenChain

@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+type Config struct {
+	ReplayAccessToken string `yaml:"ReplayAccessToken"`
+}
+
 type RawMsg struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

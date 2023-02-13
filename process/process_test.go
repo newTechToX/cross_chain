@@ -2,6 +2,7 @@ package processor
 
 import (
 	"app/dao"
+	"app/model"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -93,4 +94,47 @@ func TestProcessor_MarkTxWithFakeToken(t *testing.T) {
 		fmt.Println(err)
 	}
 
+}
+
+func TestProcessor_UpdateProfitAndRisk(t *testing.T) {
+	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	stmt := "select * from anyswap a where profit::jsonb @>'[]' and tag is null"
+	datas := []*model.Data{}
+	err := d.DB().Select(&datas, stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	println(len(datas))
+	m := Processor{}
+	i := 0
+	size := len(datas) / 5
+	for ; i < len(datas)-2*size; i = i + size {
+		println(i)
+		go m.UpdateProfitAndRisk(d, datas[i:i+size])
+	}
+	println(i)
+	m.UpdateProfitAndRisk(d, datas[i:])
+}
+
+func TestProcessor_UpdateRisk(t *testing.T) {
+	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	stmt := "select * from anyswap a where profit::jsonb @>'[]' and (tag is null or tag = '2')"
+	//stmt := "select * from anyswap where id = 4181095"
+
+	datas := []*model.Data{}
+	err := d.DB().Select(&datas, stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	println(len(datas))
+	m := Processor{}
+	i := 0
+	size := len(datas) / 100
+
+	for i = 0; i+2*size < len(datas); i = i + size {
+		go m.UpdateRisk(d, datas[i:i+size])
+	}
+	m.UpdateRisk(d, datas[i:])
 }
