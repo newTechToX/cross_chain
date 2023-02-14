@@ -18,6 +18,9 @@ type AML struct {
 }
 
 func NewAML(config_path string) *AML {
+	if config_path == "" {
+		config_path = "../txt_config.yaml"
+	}
 	var cfg Config
 	config.LoadCfg(&cfg, config_path)
 	urls := []string{

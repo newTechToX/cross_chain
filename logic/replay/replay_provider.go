@@ -24,9 +24,12 @@ type Replayer struct {
 	key string
 }
 
-func NewReplayer(svc *svc.ServiceContext, aml *aml.AML, path string) *Replayer {
+func NewReplayer(svc *svc.ServiceContext, aml *aml.AML, config_path string) *Replayer {
 	var cfg Config
-	config.LoadCfg(&cfg, path)
+	if config_path == "" {
+		config_path = "../txt_config.yaml"
+	}
+	config.LoadCfg(&cfg, config_path)
 	return &Replayer{
 		svc: svc,
 		aml: aml,

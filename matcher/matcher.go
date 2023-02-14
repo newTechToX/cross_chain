@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	interval  = 30 * 60
+	interval  = 2 * 60
 	batchSize = 10000
 )
 
@@ -51,7 +51,7 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 	defer m.svc.Wg.Done()
 	log.Info("matcher start", "project", project)
 	timer := time.NewTimer(1 * time.Second)
-	var last = uint64(5654037)
+	var last = uint64(6068536)
 	for {
 		select {
 		case <-m.svc.Ctx.Done():
@@ -59,6 +59,7 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 			return
 		case <-timer.C:
 			latest, err := m.svc.Dao.LatestId(project)
+			log.Info("latest ID", "project", project, "Id", latest)
 			if err != nil {
 				log.Error("get latest id failed", "projet", project, "err", err)
 				break

@@ -20,17 +20,18 @@ type Checker struct {
 const (
 	NULL_IN_DATABASE = -1
 	FAKE_TOKEN       = 1
-	SAFE_TOKEN       = 0
+	SAFE             = 0
+	FAKE_CHAINID     = 2
 )
 
-func NewChecker(svc *svc.ServiceContext, chain, path string) *Checker {
+func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *Checker {
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
 	}
 	return &Checker{
 		svc:      svc,
-		aml:      aml.NewAML(path),
+		aml:      aml.NewAML(config_path),
 		provider: p,
 	}
 }
@@ -85,7 +86,7 @@ func (a *Checker) IsFakeToken(project string, tokens model.Datas) map[string]int
 					utils.LogPrint(s, "./risk.log")
 				} else { // 如果查到了deployer的信息，若name前缀 == "Multichain"
 					if deployer_info_aml[deployer_info_from_provider.Deployer][0].Name[:10] == "Multichain" {
-						res[t.Token] = SAFE_TOKEN
+						res[t.Token] = SAFE
 					} else {
 						res[t.Token] = FAKE_TOKEN
 						s := fmt.Sprintf("IsFakeToken(): deployer risk, chain:%s, address:%s, name:%s",
@@ -101,7 +102,7 @@ func (a *Checker) IsFakeToken(project string, tokens model.Datas) map[string]int
 				log.Println(s)
 				utils.LogPrint(s, "./risk.log")
 			} else {
-				res[t.Token] = SAFE_TOKEN
+				res[t.Token] = SAFE
 			}
 			break
 
@@ -111,7 +112,8 @@ func (a *Checker) IsFakeToken(project string, tokens model.Datas) map[string]int
 			utils.LogPrint(s, "./risk.log")
 			break
 
-		case SAFE_TOKEN:
+		case SAFE:
+			println("safe")
 			break
 		}
 	}
@@ -131,6 +133,6 @@ func (a *Checker) queryTable(project string, t *model.Data) int {
 	if fake.Valid && fake.Int32 == 1 {
 		return FAKE_TOKEN
 	} else {
-		return SAFE_TOKEN
+		return SAFE
 	}
 }

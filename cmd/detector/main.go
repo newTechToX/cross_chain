@@ -3,7 +3,7 @@ package main
 import (
 	"app/aggregator"
 	"app/config"
-	"app/logic"
+	"app/detector"
 	"app/provider/chainbase"
 	"app/svc"
 	"context"
@@ -51,8 +51,8 @@ func main() {
 
 	config.LoadCfg(&cfg, "./config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
-	l := logic.NewLogic(srvCtx, "arbitrum", "./logic/txt_config.yaml")
-	err = l.CheckFake("anyswap")
+	l := detector.NewDetector(srvCtx, "./logic/txt_config.yaml")
+	l.Start()
 	if err != nil {
 		fmt.Println(err)
 		return

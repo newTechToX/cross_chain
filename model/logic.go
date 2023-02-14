@@ -1,5 +1,6 @@
 package model
 
 type Detector interface {
-	Detect(string, []*Data) (Datas, error)
+	DetectFake(string, []*Data) int
+	//DetectOutTx(string, []*Data)
 }

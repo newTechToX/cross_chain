@@ -8,11 +8,6 @@ import (
 	"app/svc"
 )
 
-const (
-	interval  = 30 * 60
-	batchSize = 10000
-)
-
 type Logic struct {
 	svc      *svc.ServiceContext
 	replayer *replay.Replayer
@@ -21,9 +16,6 @@ type Logic struct {
 }
 
 func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic {
-	if config_path == "" {
-		config_path = "./txt_config.yaml"
-	}
 	c := check_fake.NewChecker(svc, chain, config_path)
 	r := replay.NewReplayer(svc, c.Aml(), config_path)
 	return &Logic{
@@ -34,17 +26,16 @@ func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic 
 	}
 }
 
-func (a *Logic) Main() {
+// fake token 和 fake chainId
+//chainID的检查还没完成
 
-}
-
-func (a *Logic) CheckFake(project string, datas model.Datas) model.Datas {
-	var fake_token = model.Datas{}
+func (a *Logic) CheckFake(project string, datas model.Datas) map[int]model.Datas {
+	var fake = make(map[int]model.Datas)
 	res := a.checker.IsFakeToken(project, datas)
 	for _, d := range datas {
-		if res[d.Token] == check_fake.FAKE_TOKEN || res[d.Token] == check_fake.NULL_IN_DATABASE {
-			fake_token = append(fake_token, d)
+		if res[d.Token] != check_fake.SAFE {
+			fake[res[d.Token]] = append(fake[res[d.Token]], d)
 		}
 	}
-	return fake_token
+	return fake
 }
