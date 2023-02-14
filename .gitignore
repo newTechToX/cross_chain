@@ -1,0 +1,12 @@
+app
+debug/
+.vscode
+.idea
+.DS_Store
+tmp/
+*.txt
+txt*
+*.log
+main
+bin/
+
