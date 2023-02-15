@@ -7,7 +7,6 @@ import (
 	"app/cross_chain/hop"
 	renbridge "app/cross_chain/ren_bridge"
 	"app/cross_chain/stargate"
-	"app/cross_chain/synapse"
 	"app/cross_chain/wormhole"
 	"app/model"
 	"app/provider/chainbase"
@@ -59,19 +58,6 @@ func TestAnyswapUnderlying(t *testing.T) {
 	fmt.Println(any.GetUnderlying("eth", "0x22648C12Acd87912ea1710357b1302c6a4154ebc"))
 }
 
-func TestSynapse(t *testing.T) {
-	c := synapse.NewSynapseCollector()
-	fmt.Println(c.Name())
-	p := srvCtx.Providers.Get("eth")
-	es, err := p.GetLogs(
-		[]string{"0x2796317b0ff8538f253012862c06787adfb8ceb6"},
-		[]string{"0x79c15604b92ef54d3f61f0c40caab8857927ca3d5092367163b4562c1699eb5f"},
-		16039500, 16039500)
-	fmt.Println(err)
-	ret := c.Extract("eth", es)
-	utils.PrintPretty(ret)
-}
-
 func TestCBridge(t *testing.T) {
 	c := celer_bridge.NewCBridgeCollector()
 	fmt.Println(c.Name())
@@ -101,9 +87,6 @@ func TestStargate(t *testing.T) {
 	sort.Sort(events)
 	results := c.Extract("bsc", events)
 	utils.PrintPretty(results)
-	for _, r := range results {
-		fmt.Println(string(r.Detail))
-	}
 
 	// for eth
 	addrs = c.Contracts("eth")
@@ -119,9 +102,6 @@ func TestStargate(t *testing.T) {
 	sort.Sort(events)
 	results = c.Extract("eth", events)
 	utils.PrintPretty(results)
-	for _, r := range results {
-		fmt.Println(string(r.Detail))
-	}
 
 	// for bsc
 	addrs = c.Contracts("bsc")
@@ -137,9 +117,6 @@ func TestStargate(t *testing.T) {
 	sort.Sort(events)
 	results = c.Extract("bsc", events)
 	utils.PrintPretty(results)
-	for _, r := range results {
-		fmt.Println(string(r.Detail))
-	}
 }
 
 func TestHop(t *testing.T) {

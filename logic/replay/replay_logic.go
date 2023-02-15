@@ -28,151 +28,126 @@ const token_profit_minus_amount, other_address_profit = 2, 1
 
 const profit_address_not_found_label = 6
 
-func (a *Replayer) ReplayOutTxLogic(table string) error {
-	stmt := fmt.Sprintf("select * from %s where direction='out' and isfaketoken is null and (chain='ethereum' or chain='bsc') and to_address_profit is null", table)
-	var datas []*model.Data
-	var err error
-	err = a.svc.ProjectsDao.DB().Select(&datas, stmt)
-	if err != nil {
-		return err
-	}
-	println(len(datas))
-
-	size := len(datas) / 4
-	i := 0
-	for i = 0; i+size < len(datas); i = i + size {
-		go a.replayOutTxLogic(table, datas[i:i+size])
-	}
-	a.replayOutTxLogic(table, datas[i:])
-	return err
-}
-
 /*
 已经标注的fake token --> 做验证
 */
-func (a *Replayer) replayOutTxLogic(table string, datas []*model.Data) (err error) {
-	for i, data := range datas {
-		//to = token
-		tag := Tags{0, 0, 0, 0, 0}
+func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data, tag_chan chan Tags) (err error) {
+	//to = token
+	tag := Tags{0, 0, 0, 0, 0}
 
-		var profit []*aml.AddressInfo
-		if data.ToAddress == data.Token && !data.IsFakeToken.Valid {
-			tag.IsFakeToken = 2
-		}
+	var profit []*aml.AddressInfo
+	if data.ToAddress == data.Token && !data.IsFakeToken.Valid {
+		tag.IsFakeToken = 2
+	}
 
-		tx, err := a.Replay(data)
-		if err != nil || tx == nil {
-			err = fmt.Errorf("failed to replay %s, error: %s", data.Hash, err)
-			continue
-		}
+	tx, err := a.Replay(data)
+	if err != nil || tx == nil {
+		err = fmt.Errorf("failed to replay %s, error: %s", data.Hash, err)
+		return err
+	}
 
-		//检查from_address的行为
-		amount := data.Amount.String()
-		real_token := a.getRealToken(data.Token, tx.BalanceChanges)
-		if len(real_token) == 0 {
-			tag.TokenProfitError = 1
-		}
+	//检查from_address的行为
+	amount := data.Amount.String()
+	real_token := a.getRealToken(data.Token, tx.BalanceChanges)
+	if len(real_token) == 0 {
+		tag.TokenProfitError = 1
+	}
 
-		tag.FromAddressError = from_transfer_error //先初始化，防止根本没有from资金动态
+	tag.FromAddressError = from_transfer_error //先初始化，防止根本没有from资金动态
 
-		for _, e := range tx.BalanceChanges {
-			if e.Account == data.FromAddress {
-				tag.FromAddressError = a.checkFrom(real_token, data.Token, amount, e)
+	for _, e := range tx.BalanceChanges {
+		if e.Account == data.FromAddress {
+			tag.FromAddressError = a.checkFrom(real_token, data.Token, amount, e)
 
-				//如果arg_token != deposit_token
-				if tag.FromAddressError == from_token_type {
-					tag.FromAddressError = 0
-					previous_token := make(map[string]*DecAmount)
+			//如果arg_token != deposit_token
+			if tag.FromAddressError == from_token_type {
+				tag.FromAddressError = 0
+				previous_token := make(map[string]*DecAmount)
 
-					//获取所有arg_token的资金来源
-					for token := range real_token {
-						p := a.getPreviousToken(token, tx.BalanceChanges)
-						for k, v := range p {
-							previous_token[k] = v
-						}
+				//获取所有arg_token的资金来源
+				for token := range real_token {
+					p := a.getPreviousToken(token, tx.BalanceChanges)
+					for k, v := range p {
+						previous_token[k] = v
 					}
+				}
 
-					//检查两跳
-					if flag, problem_tokens := a.checkFrom_Token(previous_token, data.Token, amount, e); flag != from_token_amount && len(problem_tokens) != 0 {
-						d := &dao.Dao{}
-						if a.svc == nil {
-							d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
-						} else {
-							d = a.svc.Dao
-						}
-
-						//如果两跳仍然无法对应arg_token和deposit_token，那么就查标签
-						for _, token := range problem_tokens {
-							if safe, _ := d.QueryLabel(token); !safe {
-								//如果deposit_token unsafe
-								tag.FromAddressError += from_token_type
-							} else {
-								tag.FromAddressError += 0
-							}
-						}
+				//检查两跳
+				if flag, problem_tokens := a.checkFrom_Token(previous_token, data.Token, amount, e); flag != from_token_amount && len(problem_tokens) != 0 {
+					d := &dao.Dao{}
+					if a.svc == nil {
+						d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 					} else {
-						tag.FromAddressError = flag
+						d = a.svc.Dao
 					}
+
+					//如果两跳仍然无法对应arg_token和deposit_token，那么就查标签
+					for _, token := range problem_tokens {
+						if safe, _ := d.QueryLabel(token); !safe {
+							//如果deposit_token unsafe
+							tag.FromAddressError += from_token_type
+						} else {
+							tag.FromAddressError += 0
+						}
+					}
+				} else {
+					tag.FromAddressError = flag
 				}
-				if tag.FromAddressError != 0 {
-					println("from_address_error: ", data.Hash)
-				}
-				break
 			}
-		}
-
-		//to_address不应该获利
-		idx := a.profitAccounts(tx.BalanceChanges)
-		addresses := []string{}
-
-		for i := range idx {
-			if tx.BalanceChanges[i].Account == data.ToAddress && data.Token != data.ToAddress {
-				println("toaddr_profit ", data.Hash)
-				tag.ToAddressProfit = 1
+			if tag.FromAddressError != 0 {
+				println("from_address_error: ", data.Hash)
 			}
-			addresses = append(addresses, tx.BalanceChanges[i].Account)
-		}
-
-		//查询所有非to_address的获利地址信息并记录下来
-		info, err := a.aml.QueryAml(data.Chain, addresses)
-		for _, labels := range info {
-			tag.Risk = labels[0].Risk
-			profit = append(profit, labels[0])
-		}
-		if info == nil {
-			for _, addr := range addresses {
-				profit = append(profit,
-					&aml.AddressInfo{
-						Chain:   data.Chain,
-						Address: addr,
-						Risk:    profit_address_not_found_label,
-					})
-			}
-			tag.Risk = profit_address_not_found_label
-		}
-
-		//检查token的获利是否符合
-		if tag.TokenProfitError != 1 {
-			if ok := a.checkTokenProfit(real_token, data.Amount, tx.BalanceChanges); ok != 0 {
-				println("token_profit_error ", data.Hash)
-				tag.TokenProfitError = ok
-			}
-
-		}
-		p, _ := json.Marshal(profit)
-		if len(profit) == 0 {
-			p = []byte(`{}`)
-		}
-		err = a.logicUpdate(data.Id, p, table, tag)
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		if i%30 == 0 && i != 0 {
-			println("done: ", i)
+			break
 		}
 	}
-	println("all done")
+
+	//to_address不应该获利
+	idx := a.profitAccounts(tx.BalanceChanges)
+	addresses := []string{}
+
+	for i := range idx {
+		if tx.BalanceChanges[i].Account == data.ToAddress && data.Token != data.ToAddress {
+			println("toaddr_profit ", data.Hash)
+			tag.ToAddressProfit = 1
+		}
+		addresses = append(addresses, tx.BalanceChanges[i].Account)
+	}
+
+	//查询所有非to_address的获利地址信息并记录下来
+	info, err := a.aml.QueryAml(data.Chain, addresses)
+	for _, labels := range info {
+		tag.Risk = labels[0].Risk
+		profit = append(profit, labels[0])
+	}
+	if info == nil {
+		for _, addr := range addresses {
+			profit = append(profit,
+				&aml.AddressInfo{
+					Chain:   data.Chain,
+					Address: addr,
+					Risk:    profit_address_not_found_label,
+				})
+		}
+		tag.Risk = profit_address_not_found_label
+	}
+
+	//检查token的获利是否符合
+	if tag.TokenProfitError != 1 {
+		if ok := a.checkTokenProfit(real_token, data.Amount, tx.BalanceChanges); ok != 0 {
+			println("token_profit_error ", data.Hash)
+			tag.TokenProfitError = ok
+		}
+
+	}
+	p, _ := json.Marshal(profit)
+	if len(profit) == 0 {
+		p = []byte(`{}`)
+	}
+	err = a.logicUpdate(data.Id, p, table, tag)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tag_chan <- tag
 	return
 }
 

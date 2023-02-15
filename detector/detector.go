@@ -6,6 +6,7 @@ import (
 	"app/utils"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
+	log2 "log"
 	"time"
 )
 
@@ -24,6 +25,7 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 		svc: svc,
 		projects: map[string]model.Detector{
 			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path),
+			"synapse": NewSimpleOutDetector(svc, "ethereum", config_path),
 		},
 	}
 }
@@ -37,19 +39,23 @@ func (m *Detector) Start() {
 	}
 }
 
-func (m *Detector) StartDetectFake(project string, matcher model.Detector) {
+func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
-	log.Info("fakeDetector start", "project", project)
+	var last = uint64(6502396)
+	log2.SetPrefix("StartDetectFake()")
+	log.Info("fakeDetector start", "project", project, "start Id", last)
 	timer := time.NewTimer(1 * time.Second)
-	var last = uint64(5654037)
 	for {
+		t1 := time.Now()
 		select {
 		case <-m.svc.Ctx.Done():
+			log2.SetPrefix("StartDetectFake()")
 			log.Info("detect svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
 			latest, err := m.svc.Dao.LatestId(project)
+			log2.SetPrefix("StartDetectFake()")
 			log.Info("latest ID", "project", project, "Id", latest)
 			if err != nil {
 				log.Error("StartDetectFake() get latest id failed", "projet", project, "err", err)
@@ -66,12 +72,16 @@ func (m *Detector) StartDetectFake(project string, matcher model.Detector) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				fake, err := m.beginDetectFake(last+1, right, project, matcher)
+				fake, err := m.beginDetectFake(last+1, right, project, detector)
 				if err != nil {
+					log2.SetPrefix("StartDetectFake()")
 					log.Error("detectFake job failed", "project", project, "from", last+1, "to", right, "err", err)
 				} else {
 					last = right
-					log.Info("detectFake done", "project", project, "current Id", last, "batch size", batchSize, "fake", fake)
+					t2 := time.Now()
+					log2.SetPrefix("StartDetectFake()")
+					log.Info("detectFake done", "project", project, "current Id", last, "batch size", batchSize,
+						"fake", fake, "time", t2.Sub(t1).String())
 				}
 			}
 		}
@@ -92,7 +102,6 @@ func (m *Detector) beginDetectFake(from, to uint64, project string, detector mod
 	if err != nil {
 		return
 	}
-
 	fake = detector.DetectFake(project, results)
 	if err != nil {
 		return

@@ -76,6 +76,13 @@ func (d *Dao) LatestId(project string) (latest uint64, err error) {
 	return
 }
 
+func (d *Dao) LastMatchedId(project string, Id uint64) (last uint64, err error) {
+	stmt := fmt.Sprintf("select max(id) from %s where id >= %d and direction = 'in' and match_id is null", Id, project)
+	err = d.db.Get(&last, stmt)
+
+	return
+}
+
 func (d *Dao) SaveContractInfo(info model.ContractInfos) error {
 	if len(info) == 0 {
 		return nil

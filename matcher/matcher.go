@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	interval  = 2 * 60
+	interval  = 2 * 60 //扫一次数据库的时间
 	batchSize = 10000
 )
 
@@ -34,8 +34,6 @@ func NewMatcher(svc *svc.ServiceContext) *Matcher {
 		},*/
 		projects: map[string]model.Matcher{
 			"anyswap": NewSimpleInMatcher(svc.ProjectsDao),
-			//"synapse": NewSimpleInMatcher(svc.ProjectsDao),
-			//"across":  NewSimpleInMatcher(svc.ProjectsDao),
 		},
 	}
 }
@@ -51,13 +49,16 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 	defer m.svc.Wg.Done()
 	log.Info("matcher start", "project", project)
 	timer := time.NewTimer(1 * time.Second)
-	var last = uint64(6068536)
+	cnt := 0
+	var LAST = uint64(6073171)
+	var last = LAST
 	for {
 		select {
 		case <-m.svc.Ctx.Done():
 			log.Info("match svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
+			cnt += 1
 			latest, err := m.svc.Dao.LatestId(project)
 			log.Info("latest ID", "project", project, "Id", latest)
 			if err != nil {
@@ -75,20 +76,24 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				matched, err := m.BeginMatch(last+1, right, project, matcher)
+				total, matched, err := m.BeginMatch(last+1, right, project, matcher)
 				if err != nil {
 					log.Error("match job failed", "project", project, "from", last+1, "to", right, "err", err)
 				} else {
 					last = right
-					log.Info("match done", "project", project, "current Id", last, "batch size", batchSize, "total matched", matched)
+					log.Info("match done", "project", project, "current Id", last, "total", total, "matched crossIn", matched)
 				}
+			}
+			if cnt >= 10 {
+				cnt = 0
+				last = LAST
 			}
 		}
 		timer.Reset(interval * time.Second)
 	}
 }
 
-func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matcher) (matched int, err error) {
+func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matcher) (total int, matched int, err error) {
 	var stmt string
 	switch matcher.(type) {
 	case *SimpleInMatcher:
@@ -112,6 +117,7 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	if err != nil {
 		return
 	}
-	matched = len(shouldUpdates)
+	matched = len(shouldUpdates) / 2
+	total = len(results)
 	return
 }
