@@ -8,6 +8,7 @@ type AddressInfo struct {
 	Chain   string
 	Address string
 	Name    string
+	Labels  []string
 	Risk    int
 }
 

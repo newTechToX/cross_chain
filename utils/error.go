@@ -46,7 +46,7 @@ func LogPrint(info, file_path string) {
 	log.Println(info)
 }
 
-func LogError(info, file_path string) {
+func LogError(errs []*error, file_path string) {
 	file, err := os.OpenFile(file_path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -55,6 +55,7 @@ func LogError(info, file_path string) {
 	defer file.Close()
 
 	log.SetOutput(file)
-	log2.Error(info)
-	log2.Error(info)
+	for _, e := range errs {
+		log2.Error((*e).Error())
+	}
 }

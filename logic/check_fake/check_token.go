@@ -9,6 +9,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 )
 
 type Checker struct {
@@ -46,6 +47,7 @@ func (c *Checker) Aml() *aml.AML {
 func (a *Checker) IsFakeToken(project string, t *model.Data) int {
 	res := a.queryTable(project, t)
 	a.provider = (&provider.Providers{}).Get(t.Chain)
+	var errs []*error
 
 	switch res {
 	//如果不在数据库中，就查询aml
@@ -82,38 +84,49 @@ func (a *Checker) IsFakeToken(project string, t *model.Data) int {
 
 			//如果aml也查不到deployer的信息，则认为风险较高
 			if deployer_info_aml[deployer_info_from_provider.Deployer] == nil {
-				s := fmt.Sprintf("nothing: query deployer from providers, chain:%s, address:%s", t.Chain, deployer_info_from_provider.Deployer)
+				s := fmt.Errorf("nothing: query deployer from providers, chain:%s, address:%s", t.Chain, deployer_info_from_provider.Deployer)
 				log.SetPrefix("IsFakeToken()")
-				utils.LogError(s, "./risk.log")
+				errs = append(errs, &s)
 			} else { // 如果查到了deployer的信息，若name前缀 == "Multichain"
 				if deployer_info_aml[deployer_info_from_provider.Deployer][0].Name[:10] == "Multichain" {
 					res = SAFE
 				} else {
 					res = FAKE_TOKEN
-					s := fmt.Sprintf("IsFakeToken(): deployer risk, chain:%s, address:%s, name:%s",
+					s := fmt.Errorf("IsFakeToken(): deployer risk, chain:%s, address:%s, name:%s",
 						t.Chain, deployer_info_from_provider.Deployer, deployer_info_aml[deployer_info_from_provider.Deployer][0].Name)
-					utils.LogError(s, "./risk.log")
+					errs = append(errs, &s)
 				}
 			}
 		} else if info_from_aml[t.Token][0].Risk >= 3 { // 如果从aml里查到了token的标签
 			res = FAKE_TOKEN
-			s := fmt.Sprintf("IsFakeToken(): token risk %d, chain:%s, address:%s, name:%s",
+			s := fmt.Errorf("IsFakeToken(): token risk %d, chain:%s, address:%s, name:%s",
 				info_from_aml[t.Token][0].Risk, t.Chain, t.Token, info_from_aml[t.Token][0].Name)
-			utils.LogError(s, "./risk.log")
+			errs = append(errs, &s)
+		} else if project == "across" && len(info_from_aml[t.Token][0].Labels) > 0 {
+			for _, l := range info_from_aml[t.Token][0].Labels {
+				if strings.Contains(l, "TOKEN") {
+					stmt := fmt.Sprintf("update %s set isfaketoken=2 where id=%d", project, t.Id)
+					_, err = a.svc.Dao.DB().Exec(stmt)
+					if err != nil {
+						fmt.Println(err)
+					}
+				}
+			}
 		} else {
 			res = SAFE
 		}
 		break
 
 	case FAKE_TOKEN:
-		s := fmt.Sprintf("fake token: fake token in database, chain:%s, address:%s", t.Chain, t.Token)
+		s := fmt.Errorf("fake token: fake token in database, chain:%s, address:%s", t.Chain, t.Token)
 		log.SetPrefix("IsFakeToken()")
-		utils.LogError(s, "./risk.log")
+		errs = append(errs, &s)
 		break
 
 	case SAFE:
 		break
 	}
+	utils.LogError(errs, "./risk.log")
 	return res
 }
 

@@ -42,3 +42,29 @@ type Detail struct {
 	DepositId string `json:"depositId,omitempty"`
 	Relayer   string `json:"relayer,omitempty"`
 }
+
+var AcrossToken = map[string][]string{
+	"eth": {
+		"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+		"0x6b175474e89094c44da98b954eedeac495271d0f",
+		"0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+		"0x04fa0d235c4abf4bcf4787af4cf447de572ef828",
+		"0xba100000625a3754423978a60c9317c58a424e3d",
+		"0x42bbfa2e77757c645eeaad1655e0911a7553efbc",
+		"0x44108f0223a3c3028f5fe7aec7f9bb2e66bef82f",
+		"0xdac17f958d2ee523a2206206994597c13d831ec7",
+		"0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f",
+		"0x3472a5a71965499acd81997a54bba8d852c6e53d",
+	},
+	"optimism": {
+		"0x4200000000000000000000000000000000000006",
+		"0x7f5c764cbc14f9669b88837ca1490cca17c31607",
+		"0xda10009cbd5d07dd0cecc66161fc93d7c9000da1",
+		"0x68f180fcce6836688e9084f035309e29bf0a2095",
+		"0xfe8b128ba8c78aabc59d4c64cee7ff28e9379921",
+		"0xe7798f023fc62146e8aa1b36da45fb70855a77ea",
+		"0x94b008aa00579c1307b0ef2c499ad98a8ce58e58",
+		"0xff733b2a3557a7ed6697007ab5d11b79fdd1b76b",
+		"0x8700daec35af8ff88c16bdf0418774cb3d7599b4",
+	},
+}

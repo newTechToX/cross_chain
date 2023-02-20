@@ -77,7 +77,7 @@ func (d *Dao) LatestId(project string) (latest uint64, err error) {
 }
 
 func (d *Dao) LastMatchedId(project string, Id uint64) (last uint64, err error) {
-	stmt := fmt.Sprintf("select max(id) from %s where id >= %d and direction = 'in' and match_id is null", Id, project)
+	stmt := fmt.Sprintf("select max(id) from %s where id >= %d and direction = 'in' and match_id is null", project, Id)
 	err = d.db.Get(&last, stmt)
 
 	return
@@ -165,6 +165,38 @@ func (d *Dao) Update(project string, results model.Datas) (err error) {
 		}
 	}
 	return
+}
+
+func (d *Dao) UpdateAnyswapMatchTag(project string, results model.Datas) int {
+	tx, err := d.db.Beginx()
+	cnt := 0
+	if err != nil {
+		return cnt
+	}
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		} else if err != nil {
+			log.Error("save trades rollback")
+			tx.Rollback()
+		} else {
+			err = tx.Commit()
+		}
+	}()
+
+	filedName := []string{"match_tag"}
+	FiledName := builder.PostgreSqlJoin(filedName)
+	stmt := fmt.Sprintf("update %s set %s where id = $1", project, FiledName)
+	for _, r := range results {
+		_, err = d.db.Exec(stmt, r.Id, r.MatchTag)
+		if err != nil {
+			log.Error("update failed", "err", err)
+		} else {
+			cnt++
+		}
+	}
+	return cnt
 }
 
 func (d *Dao) UpdateMatchId(id, match_id uint64) error {

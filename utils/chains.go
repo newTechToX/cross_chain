@@ -32,6 +32,7 @@ var unstandardChains = map[string]*big.Int{
 	"terra-columbus-5": new(big.Int).SetUint64(TerraColumbus),
 	"terra-phoenix-1":  new(big.Int).SetUint64(TerraPhoenix),
 	"aptos":            new(big.Int).SetUint64(Aptos),
+	"boba":             new(big.Int).SetUint64(288),
 }
 
 func GetChainId(name string) *big.Int {

@@ -104,12 +104,19 @@ func (a *AML) getInfo(data []*ReturnData) map[string][]*AddressInfo {
 			continue
 		}
 		if d.Labels != nil && !reflect.DeepEqual(*d.Labels, Labels{}) {
+			var labels []string
+			for _, l := range d.Labels.Others {
+				if l.Confidence >= 8 {
+					labels = append(labels, l.Label)
+				}
+			}
 			info_map[d.Address] = append(info_map[d.Address],
 				&AddressInfo{
 					Chain:   d.Chain,
 					Address: d.Address,
 					Name:    (d.Labels).name(),
 					Risk:    d.Risk,
+					Labels:  labels,
 				})
 		} else if len(d.CompatibleChainLabels) > 0 {
 			for _, comp := range d.CompatibleChainLabels {

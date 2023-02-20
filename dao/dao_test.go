@@ -74,3 +74,15 @@ func TestDa(t *testing.T) {
 		println(fmt.Println(err))
 	}
 }
+
+func TestBigFloat_Cmp(t *testing.T) {
+	stmt := fmt.Sprintf("select %s from across limit 10", model.ResultRows)
+	d := NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	var data model.Datas
+	err := d.DB().Select(&data, stmt)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		println(len(data))
+	}
+}

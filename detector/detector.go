@@ -24,8 +24,8 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 	return &Detector{
 		svc: svc,
 		projects: map[string]model.Detector{
-			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path),
-			"synapse": NewSimpleOutDetector(svc, "ethereum", config_path),
+			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(6972699)),
+			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1)),
 		},
 	}
 }
@@ -34,15 +34,15 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 //每2分钟检查一次
 
 func (m *Detector) Start() {
-	for project, matcher := range m.projects {
-		go m.StartDetectFake(project, matcher)
+	for project, detector := range m.projects {
+		go m.StartDetectFake(project, detector)
 	}
 }
 
 func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
-	var last = uint64(6502396)
+	var last = detector.LastId()
 	log2.SetPrefix("StartDetectFake()")
 	log.Info("fakeDetector start", "project", project, "start Id", last)
 	timer := time.NewTimer(1 * time.Second)
@@ -55,8 +55,6 @@ func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 			return
 		case <-timer.C:
 			latest, err := m.svc.Dao.LatestId(project)
-			log2.SetPrefix("StartDetectFake()")
-			log.Info("latest ID", "project", project, "Id", latest)
 			if err != nil {
 				log.Error("StartDetectFake() get latest id failed", "projet", project, "err", err)
 				break
@@ -93,7 +91,7 @@ func (m *Detector) beginDetectFake(from, to uint64, project string, detector mod
 	var stmt string
 	switch detector.(type) {
 	case *SimpleOutDetector:
-		stmt = fmt.Sprintf("select * from %s where direction = '%s' and id >= $1 and id <= $2", project, model.OutDirection)
+		stmt = fmt.Sprintf("select %s from %s where direction = '%s' and id >= $1 and id <= $2", model.ResultRows, project, model.OutDirection)
 	default:
 		panic("invalid detector")
 	}

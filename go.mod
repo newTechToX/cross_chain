@@ -9,6 +9,7 @@ require (
 	github.com/zeromicro/go-zero v1.4.3
 	golang.org/x/exp v0.0.0-20220426173459-3bcf042a4bf5
 	golang.org/x/net v0.2.0
+	golang.org/x/text v0.4.0
 	golang.org/x/time v0.3.0
 	gopkg.in/yaml.v3 v3.0.1
 )

@@ -6,19 +6,30 @@ import (
 	"app/utils"
 	"database/sql"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+	"regexp"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
 type SimpleInMatcher struct {
-	dao *dao.Dao
+	dao     *dao.Dao
+	last_id uint64
 }
 
 var _ model.Matcher = &SimpleInMatcher{}
 
-func NewSimpleInMatcher(dao *dao.Dao) *SimpleInMatcher {
-	return &SimpleInMatcher{dao: dao}
+func NewSimpleInMatcher(dao *dao.Dao, last_id uint64) *SimpleInMatcher {
+	return &SimpleInMatcher{
+		dao:     dao,
+		last_id: last_id,
+	}
+}
+
+func (a *SimpleInMatcher) LastId() uint64 {
+	return a.last_id
 }
 
 // match cross-out txs with cross-in txs, the inputs should be cross-in
@@ -33,8 +44,17 @@ func (m *SimpleInMatcher) Match(project string, crossIns []*model.Data) (shouldU
 			continue
 		}
 		var pending model.Datas
-		stmt := fmt.Sprintf("select * from %s where match_tag = $1 and direction = '%s' and to_chain = $2", project, model.OutDirection)
-		err := m.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String())
+		var stmt string
+		var err error
+
+		switch project {
+		case "across":
+			stmt = fmt.Sprintf("select %s from %s where match_tag = $1 and direction = '%s' and to_chain = $2 and from_address = $3 and to_address = $4 and amount = $5", model.ResultRows, project, model.OutDirection)
+			err = m.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String(), crossIn.FromAddress, crossIn.ToAddress, crossIn.Amount.String())
+		default:
+			stmt = fmt.Sprintf("select %s from %s where match_tag = $1 and direction = '%s' and to_chain = $2", model.ResultRows, project, model.OutDirection)
+			err = m.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String())
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -73,10 +93,10 @@ func isMatched(out, in *model.Data) bool {
 			return false
 		}
 	}
-	if out.FromAddress != "" && in.FromAddress != "" && out.FromAddress != in.FromAddress {
+	if out.FromAddress != "" && in.FromAddress != "" && strings.ToLower(out.FromAddress) != strings.ToLower(in.FromAddress) {
 		return false
 	}
-	if out.ToAddress != "" && in.ToAddress != "" && out.ToAddress != in.ToAddress {
+	if out.ToAddress != "" && in.ToAddress != "" && strings.ToLower(out.ToAddress) != strings.ToLower(in.ToAddress) {
 		return false
 	}
 
@@ -117,4 +137,37 @@ func fillEmptyFields(out, in *model.Data) {
 	if out.ToAddress == "" {
 		out.ToAddress = in.ToAddress
 	}
+}
+
+func (m *SimpleInMatcher) UpdateAnyswapMatchTag(project string, crossIns model.Datas) (cnt int, errs []*error) {
+	shouldUpdates, errs := updateAnyswapMatchTag(crossIns)
+	cnt = m.dao.UpdateAnyswapMatchTag(project, shouldUpdates)
+	return
+}
+
+func updateAnyswapMatchTag(crossIns model.Datas) (shouldUpdates model.Datas, errs []*error) {
+	var isStringAlphabetic = regexp.MustCompile(`^[0-9]+$`).MatchString
+	// 若包含字母则返回false，不包含字母则返回true
+
+	for _, crossIn := range crossIns {
+		s := crossIn.MatchTag
+		/*r, err := hex.DecodeString(s[2:])
+		if err != nil {
+			err = fmt.Errorf("updateAnyswapMatchTag(): decodeString error, string: %s, error: %v", s, err)
+			errs = append(errs, &err)
+		}*/
+		//t, ert := simplifiedchinese.GBK.NewEncoder().Bytes(r)
+
+		if ert := isStringAlphabetic(s[2:]); !ert { //是更新前的形式，即srcTxHash，需要进一步处理
+			var swapIDHash common.Hash
+			if utils.IsHex(s) {
+				swapIDHash = common.HexToHash(s)
+			} else {
+				swapIDHash = common.BytesToHash([]byte(s))
+			}
+			crossIn.MatchTag = swapIDHash.String()
+			shouldUpdates = append(shouldUpdates, crossIn)
+		}
+	}
+	return
 }

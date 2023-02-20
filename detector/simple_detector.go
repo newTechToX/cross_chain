@@ -14,16 +14,22 @@ type SimpleOutDetector struct {
 	svc     *svc.ServiceContext
 	logic   *logic.Logic
 	matcher *matcher.Matcher
+	last_id uint64
 }
 
 var _ model.Detector = &SimpleOutDetector{}
 
-func NewSimpleOutDetector(svc *svc.ServiceContext, chain string, config_path string) *SimpleOutDetector {
+func NewSimpleOutDetector(svc *svc.ServiceContext, chain string, config_path string, last_id uint64) *SimpleOutDetector {
 	return &SimpleOutDetector{
 		svc:     svc,
 		logic:   logic.NewLogic(svc, chain, config_path),
 		matcher: matcher.NewMatcher(svc),
+		last_id: last_id,
 	}
+}
+
+func (a *SimpleOutDetector) LastId() uint64 {
+	return a.last_id
 }
 
 // OutDetector的 Detect 用于检测所有tx的fake token & chainID，将没有match的做二次检测

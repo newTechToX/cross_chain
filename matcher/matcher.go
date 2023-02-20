@@ -33,7 +33,8 @@ func NewMatcher(svc *svc.ServiceContext) *Matcher {
 			synapse.NewSynapseCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
 		},*/
 		projects: map[string]model.Matcher{
-			"anyswap": NewSimpleInMatcher(svc.ProjectsDao),
+			"anyswap": NewSimpleInMatcher(svc.ProjectsDao, uint64(6972699)),
+			"across":  NewSimpleInMatcher(svc.ProjectsDao, uint64(1)),
 		},
 	}
 }
@@ -50,7 +51,7 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 	log.Info("matcher start", "project", project)
 	timer := time.NewTimer(1 * time.Second)
 	cnt := 0
-	var LAST = uint64(6073171)
+	var LAST = matcher.LastId()
 	var last = LAST
 	for {
 		select {
@@ -60,7 +61,6 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 		case <-timer.C:
 			cnt += 1
 			latest, err := m.svc.Dao.LatestId(project)
-			log.Info("latest ID", "project", project, "Id", latest)
 			if err != nil {
 				log.Error("get latest id failed", "projet", project, "err", err)
 				break
@@ -98,17 +98,31 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	switch matcher.(type) {
 	case *SimpleInMatcher:
 		//stmt = fmt.Sprintf("select * from %s where project = '%s' and direction = '%s' and id >= $1 and id <= $2 and match_id is null and match_tag not in ('0', '1', '2', '3', '4')", m.svc.Dao.Table(), project, model.InDirection)
-		stmt = fmt.Sprintf("select * from %s where direction = '%s' and id >= $1 and id <= $2 and match_id is null and match_tag not in ('0', '1', '2', '3', '4')", project, model.InDirection)
+		stmt = fmt.Sprintf("select %s from %s where direction = '%s' and id >= $1 and id <= $2 and match_id is null "+
+			"", model.ResultRows, project, model.InDirection)
 	default:
 		panic("invalid matcher")
 	}
-	// fmt.Println(stmt)
 	var results model.Datas
+
+	if project == "anyswap" {
+		stmt_ := fmt.Sprintf("select %s from %s where id >= $1 and id <= $2 and match_id is null ", model.ResultRows, project)
+		err = m.svc.Dao.DB().Select(&results, stmt_, from, to)
+		if err != nil {
+			return
+		}
+
+		cnt, errs := matcher.UpdateAnyswapMatchTag(project, results)
+		if errs != nil {
+			utils.LogError(errs, "./error.log")
+		}
+		log.Info("update anyswap tag done", "updated", cnt)
+	}
+
 	err = m.svc.Dao.DB().Select(&results, stmt, from, to)
 	if err != nil {
 		return
 	}
-
 	shouldUpdates, err := matcher.Match(project, results)
 	if err != nil {
 		return

@@ -2,6 +2,9 @@ package model
 
 import (
 	"database/sql"
+	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stringx"
+	"strings"
 	"time"
 )
 
@@ -93,3 +96,16 @@ type Data struct {
 }
 
 type Datas []*Data
+
+var CommonFiledNames = []string{
+	"id", "chain", "block_number", "tx_index", "hash", "log_index", "contract",
+	"direction", "from_chain", "from_address", "to_chain", "to_address", "token",
+	"amount", "match_tag", "profit", "from_address_error", "to_address_profit",
+	"token_profit_error", "isfaketoken", "tag",
+}
+
+var (
+	ResultFieldNames = builder.RawFieldNames(&Data{}, true)
+	ResultRows       = strings.Join(stringx.Remove(ResultFieldNames, "project"), ",")
+	ResultTags       = builder.PostgreSqlJoin(ResultFieldNames)
+)

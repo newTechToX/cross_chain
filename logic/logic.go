@@ -6,6 +6,7 @@ import (
 	"app/logic/replay"
 	"app/model"
 	"app/svc"
+	"fmt"
 	"github.com/ethereum/go-ethereum/log"
 	"time"
 )
@@ -40,6 +41,11 @@ func (a *Logic) CheckFake(project string, datas model.Datas, unsafe_tokens_chan 
 	for _, d := range datas {
 		if isfake := a.checker.IsFakeToken(project, d); isfake != check_fake.SAFE {
 			res_list[isfake] = append(res_list[isfake], d)
+		} else {
+			stmt := fmt.Sprintf("update %s set isfaketoken = 0", project)
+			if _, err := a.svc.Dao.DB().Exec(stmt); err != nil {
+				fmt.Println("failed to update safe token: ", d.Token)
+			}
 		}
 	}
 	unsafe_tokens_chan <- res_list
