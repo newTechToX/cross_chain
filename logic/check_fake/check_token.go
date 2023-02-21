@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-type Checker struct {
+type FakeChecker struct {
 	svc      *svc.ServiceContext
 	aml      *aml.AML
 	provider *provider.Provider
@@ -25,26 +25,26 @@ const (
 	FAKE_CHAINID     = 2
 )
 
-func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *Checker {
+func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *FakeChecker {
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
 	}
-	return &Checker{
+	return &FakeChecker{
 		svc:      svc,
 		aml:      aml.NewAML(config_path),
 		provider: p,
 	}
 }
 
-func (c *Checker) Aml() *aml.AML {
+func (c *FakeChecker) Aml() *aml.AML {
 	if c.aml == nil {
 		c.aml = aml.NewAML("../txt_config.yaml")
 	}
 	return c.aml
 }
 
-func (a *Checker) IsFakeToken(project string, t *model.Data) int {
+func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 	res := a.queryTable(project, t)
 	a.provider = (&provider.Providers{}).Get(t.Chain)
 	var errs []*error
@@ -130,7 +130,7 @@ func (a *Checker) IsFakeToken(project string, t *model.Data) int {
 	return res
 }
 
-func (a *Checker) queryTable(project string, t *model.Data) int {
+func (a *FakeChecker) queryTable(project string, t *model.Data) int {
 	stmt := fmt.Sprintf("select isfaketoken from %s where chain = '%s' and token = '%s' and block_number<%d", project, t.Chain, t.Token, t.Number)
 	var fake sql.NullInt32
 	err := a.svc.ProjectsDao.DB().Get(&fake, stmt)
