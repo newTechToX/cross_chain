@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 )
@@ -117,4 +118,23 @@ func TestMax(t *testing.T) {
 		1, 2, 3, 4, 5,
 	}
 	println(Max(a...))
+}
+
+func TestSendMail(t *testing.T) {
+	//定义收件人
+	mailTo := []string{
+		"hxhsia@163.com",
+	}
+	//邮件主题为"Hello"
+	subject := "Hello by golang gomail from 163.com"
+	// 邮件正文
+	body := "Hello,by gomail sent"
+
+	err := SendMail(mailTo, subject, body)
+	if err != nil {
+		log.Println(err)
+		fmt.Println("send fail")
+		return
+	}
+	fmt.Println("send successfully")
 }

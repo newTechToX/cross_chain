@@ -14,23 +14,6 @@ import (
 	"testing"
 )
 
-/*func TestSimpleMatcher(t *testing.T) {
-	_dao := dao.NewDao("postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/cross_chain?sslmode=disable")
-	m := NewSimpleInMatcher(_dao)
-	var results model.Datas
-	err := _dao.DB().Select(&results, "select * from common_cross_chain where match_tag = '0x0000000000000000000000000000000000000000000000000000000000000005' and direction = 'in'")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	shouldUpdates, err := m.Match("", results)
-	fmt.Println(err)
-	utils.PrintPretty(shouldUpdates)
-
-	err = _dao.Update(shouldUpdates)
-	fmt.Println(err)
-}*/
-
 var cfg config.Config
 var srvCtx *svc.ServiceContext
 
@@ -45,15 +28,19 @@ func init() {
 
 func TestSimpleInMatcher_UpdateAnyswapMatchTag(t *testing.T) {
 	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
-	id := uint64(352)
-	stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
+	start_id := uint64(438486)
+	id := uint64(438980)
+	//stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
+	stmt := fmt.Sprintf("select %s from anyswap where direction = 'out' and id > $1 and id < $2 and to_chain in(1,10,56,137,250,42161,43114) and match_id is null", model.ResultRows)
 	var data model.Datas
-	_ = d.DB().Select(&data, stmt)
+	_ = d.DB().Select(&data, stmt, start_id, id)
+	println(len(data))
 	var m = &Matcher{}
 	m.svc = srvCtx
-	a := NewSimpleInMatcher(srvCtx.ProjectsDao, uint64(6972699))
-	m.BeginMatch(id-1, id+1, "across", a)
-	println(data[0].MatchTag)
+	a := NewSimpleInMatcher(srvCtx.ProjectsDao, id)
+	//m.BeginMatch(id-1, id+1, "anyswap", a)
+	n, _ := a.UpdateAnyswapMatchTag("anyswap", data)
+	println(n)
 }
 
 func TestNewSimpleInMatcher(t *testing.T) {

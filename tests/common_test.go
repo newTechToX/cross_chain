@@ -144,7 +144,7 @@ func TestDeleteDuplicates(t *testing.T) {
 func deleteDuplicates(chain string) {
 	Web3QueryStartBlock := map[string]uint64{
 		"ethereum":  12000000,
-		"bsc":       5000000,
+		"bsc":       25545001,
 		"polygon":   15000000,
 		"fantom":    2000000,
 		"arbitrum":  900,
@@ -172,7 +172,7 @@ func deleteDuplicates(chain string) {
 
 	cnt := 0
 	for _, data := range datas {
-		stmt = fmt.Sprintf("select * from anyswap where hash = '%s' and id != %d", data.Hash, data.Id)
+		stmt = fmt.Sprintf("select * from anyswap where hash = '%s' and log_index = %d and tx_index = %d and id != %d", data.Hash, data.ActionId, data.Index, data.Id)
 		var dup model.Datas
 		er = d.DB().Select(&dup, stmt)
 		if er != nil {

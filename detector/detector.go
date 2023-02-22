@@ -24,8 +24,8 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 	return &Detector{
 		svc: svc,
 		projects: map[string]model.Detector{
-			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(6972699)),
-			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1)),
+			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(7501665)),
+			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1549959)),
 		},
 	}
 }

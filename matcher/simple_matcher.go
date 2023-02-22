@@ -65,15 +65,34 @@ func (m *SimpleInMatcher) Match(project string, crossIns []*model.Data) (shouldU
 		// 	log.Error("multi matched", "src", crossIn.Hash)
 		// }
 		valid := make(model.Datas, 0)
+		multi := false
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
+				continue
+			}
+			if counterparty.MatchId.Valid {
+				//说明已经match过
+				multi = true
 				continue
 			}
 			valid = append(valid, counterparty)
 			fillEmptyFields(counterparty, crossIn)
 		}
+		if len(valid) == 0 {
+			subject := fmt.Sprintf("%s UMATCHED", project)
+			info := fmt.Errorf("unmatched tx, Id: %d, chain: %s, hash: %s", crossIn.Id, crossIn.Chain, crossIn.Hash)
+			err := utils.SendMail(subject, info.Error())
+			if err != nil {
+				errs := []*error{&info}
+				utils.LogError(errs, "./risk.log")
+			}
+		}
 		if len(valid) > 1 {
-			log.Error("multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", project)
+			log.Warn("out tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", project)
+		} else if len(valid) == 0 && multi {
+			log.Error("in tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", project)
+		} else if len(valid) == 0 && !multi {
+			log.Error("unmatch", "src", crossIn.Hash, "chain", crossIn.Chain, "project", project)
 		} else {
 			shouldUpdates = append(shouldUpdates, crossIn)
 			shouldUpdates = append(shouldUpdates, valid...)
@@ -151,12 +170,6 @@ func updateAnyswapMatchTag(crossIns model.Datas) (shouldUpdates model.Datas, err
 
 	for _, crossIn := range crossIns {
 		s := crossIn.MatchTag
-		/*r, err := hex.DecodeString(s[2:])
-		if err != nil {
-			err = fmt.Errorf("updateAnyswapMatchTag(): decodeString error, string: %s, error: %v", s, err)
-			errs = append(errs, &err)
-		}*/
-		//t, ert := simplifiedchinese.GBK.NewEncoder().Bytes(r)
 
 		if ert := isStringAlphabetic(s[2:]); !ert { //是更新前的形式，即srcTxHash，需要进一步处理
 			var swapIDHash common.Hash

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	interval  = 2 * 60 //扫一次数据库的时间
+	interval  = 40 //扫一次数据库的时间
 	batchSize = 10000
 )
 
@@ -33,8 +33,8 @@ func NewMatcher(svc *svc.ServiceContext) *Matcher {
 			synapse.NewSynapseCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
 		},*/
 		projects: map[string]model.Matcher{
-			"anyswap": NewSimpleInMatcher(svc.ProjectsDao, uint64(6972699)),
-			"across":  NewSimpleInMatcher(svc.ProjectsDao, uint64(1)),
+			"anyswap": NewSimpleInMatcher(svc.ProjectsDao, uint64(7121480)),
+			"across":  NewSimpleInMatcher(svc.ProjectsDao, uint64(1547700)),
 		},
 	}
 }
