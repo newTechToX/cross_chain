@@ -4,6 +4,7 @@ import (
 	"app/model"
 	"app/utils"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -84,5 +85,18 @@ func TestBigFloat_Cmp(t *testing.T) {
 		fmt.Println(err)
 	} else {
 		println(len(data))
+	}
+}
+
+func TestNewAnyDao(t *testing.T) {
+	stmt := "select * from anyswap where id = 77000000"
+	d := NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	var da model.Data
+	err := d.DB().Get(&(da), stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if reflect.DeepEqual(da, model.Data{}) {
+		println("nil")
 	}
 }

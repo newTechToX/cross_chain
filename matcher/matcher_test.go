@@ -28,11 +28,13 @@ func init() {
 
 func TestSimpleInMatcher_UpdateAnyswapMatchTag(t *testing.T) {
 	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+
+	//m.BeginMatch(id-1, id+1, "across", a)
+	var data model.Datas
 	start_id := uint64(438486)
 	id := uint64(438980)
 	//stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
 	stmt := fmt.Sprintf("select %s from anyswap where direction = 'out' and id > $1 and id < $2 and to_chain in(1,10,56,137,250,42161,43114) and match_id is null", model.ResultRows)
-	var data model.Datas
 	_ = d.DB().Select(&data, stmt, start_id, id)
 	println(len(data))
 	var m = &Matcher{}

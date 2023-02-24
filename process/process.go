@@ -584,11 +584,12 @@ type A struct {
 	Hash  string `db:"hash"`
 	Id    uint64 `db:"m"`
 	Count int    `db:"c"`
-	Index int    `db:"log_index"`
+	Index int    `db:"block_number"`
 }
 
 func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
-	stmt := "select count(hash) as c,  min(id) as m, hash, log_index from across a where id > 1551400 group by hash, log_index"
+	//stmt := "with t as (select count(hash) as c,  min(id) as m, hash, log_index from across a where id > 1551400 group by hash, log_index) select * from t where c != 1"
+	stmt := "with t as (select count(block_number) as c,  min(id) as m, hash, block_number from across a where id > 1551400 group by hash, block_number ) select * from t where c != 1"
 	var datas []*A
 	err := d.DB().Select(&datas, stmt)
 	if err != nil {
@@ -596,12 +597,12 @@ func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
 		return
 	}
 	println(len(datas))
-	size := len(datas) / 10
+	//size := len(datas) / 10
 	i := 0
 	var done = make(chan struct{})
-	for ; i < len(datas)-2*size; i = i + size {
+	/*for ; i < len(datas)-2*size; i = i + size {
 		go deleteAcrossDuplicates(d, datas[i:i+size], done)
-	}
+	}*/
 	deleteAcrossDuplicates(d, datas[i:], done)
 	<-done
 }
@@ -609,11 +610,13 @@ func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
 func deleteAcrossDuplicates(d *dao.Dao, datas []*A, done chan struct{}) {
 	for _, data := range datas {
 		if data.Count > 1 {
-			stmt := fmt.Sprintf("delete from across where hash = '%s' and log_index = %d and id != %d", data.Hash, data.Index, data.Id)
+			stmt := fmt.Sprintf("delete from across where hash = '%s' and block_number = %d and id != %d", data.Hash, data.Index, data.Id)
 			_, err := d.DB().Exec(stmt)
 			if err != nil {
 				fmt.Println(err)
 				continue
+			} else {
+				println("ok")
 			}
 		}
 	}

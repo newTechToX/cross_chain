@@ -34,11 +34,15 @@ func (a *SimpleInMatcher) LastUnmatchId() uint64 {
 	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in (1, 10, 56, 137, 250, 42161, 43114)", a.project, a.start_id)
 	var id = a.start_id
 	if err := a.dao.DB().Get(&id, stmt); err != nil {
-		log.Warn("failed to get unmatchId", "Project", a.project, "ERROR", err)
+		log.Warn("failed to get unmatchId", "project", a.project, "ERROR", err)
 	} else {
 		a.start_id = id
 	}
 	return a.start_id
+}
+
+func (a *SimpleInMatcher) Project() string {
+	return a.project
 }
 
 // match cross-out txs with cross-in txs, the inputs should be cross-in
@@ -76,10 +80,12 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		// }
 		valid := make(model.Datas, 0)
 		multi := false
+		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
 				continue
 			}
+
 			if counterparty.MatchId.Valid {
 				multi = true
 				//说明已经match过，但有可能是数据重复的原因
@@ -89,6 +95,8 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 					fmt.Println(err)
 				} else if dup.Hash == crossIn.Hash && dup.Number != crossIn.Number {
 					multi = false
+					dups = append(dups, &dup)
+					dups = append(dups, counterparty)
 				}
 			}
 			if !multi {
@@ -101,10 +109,10 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		}
 		if len(valid) == 0 {
 			if !multi {
-				a.SendMail("UNMATCH", crossIn)
+				a.SendMail("UNMATCH", dups)
 				log.Error("unmatch", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
 			} else {
-				a.SendMail("MULTI MATCHED", crossIn)
+				a.SendMail("MULTI MATCHED IN", dups)
 				log.Error("in tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
 			}
 		}
@@ -200,12 +208,17 @@ func updateAnyswapMatchTag(crossIns model.Datas) (shouldUpdates model.Datas, err
 	return
 }
 
-func (a *SimpleInMatcher) SendMail(sub string, data *model.Data) {
+func (a *SimpleInMatcher) SendMail(sub string, datas []*model.Data) {
 	subject := fmt.Sprintf("%s %s", strings.ToUpper(a.project), strings.ToUpper(sub))
-	info := fmt.Errorf("%s tx, Id: %d, chain: %s, hash: %s", subject, data.Id, data.Chain, data.Hash)
-	err := utils.SendMail(subject, info.Error())
+	var info string
+	for _, d := range datas {
+		info += fmt.Sprintf("%s tx, Id: %d, chain: %s, hash: %s\n", subject, d.Id, d.Chain, d.Hash)
+	}
+
+	err := utils.SendMail(subject, info)
 	if err != nil {
-		errs := []*error{&info}
+		e := fmt.Errorf(info)
+		errs := []*error{&e}
 		utils.LogError(errs, "./risk.log")
 	}
 }

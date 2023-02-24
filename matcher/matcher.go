@@ -42,16 +42,6 @@ func NewMatcher(svc *svc.ServiceContext, startIds map[string]uint64) *Matcher {
 	}
 }
 
-/*func (m *Matcher) SetStartId(project string, id uint64) {
-	m.projects[project] = NewSimpleInMatcher(m.svc.ProjectsDao, id)
-}
-
-func (m *Matcher) PrintStartId() {
-	for project := range m.projects {
-		fmt.Println(m.projects[project].LastId())
-	}
-}*/
-
 func (m *Matcher) Start() {
 	for _, matcher := range m.projects {
 		go m.StartMatch(matcher)
@@ -63,16 +53,16 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 	defer m.svc.Wg.Done()
 	timer := time.NewTimer(1 * time.Second)
 	var last = matcher.LastUnmatchId()
-	log.Info("matcher start", "Project", matcher.project, "Start ID", last)
+	log.Info("matcher start", "project", matcher.Project(), "Start ID", last)
 	for {
 		select {
 		case <-m.svc.Ctx.Done():
-			log.Info("match svc done", "project", project, "current Id", last)
+			log.Info("match svc done", "project", matcher.Project(), "current Id", last)
 			return
 		case <-timer.C:
-			latest, err := m.svc.Dao.LatestId(project)
+			latest, err := m.svc.Dao.LatestId(matcher.Project())
 			if err != nil {
-				log.Error("get latest id failed", "projet", project, "err", err)
+				log.Error("get latest id failed", "projet", matcher.Project(), "err", err)
 				break
 			}
 			for last < latest {
@@ -86,12 +76,12 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				total, matched, err := m.BeginMatch(last+1, right, project, matcher)
+				total, matched, err := m.BeginMatch(last+1, right, matcher.Project(), matcher)
 				if err != nil {
-					log.Error("match job failed", "project", project, "from", last+1, "to", right, "err", err)
+					log.Error("match job failed", "project", matcher.Project(), "from", last+1, "to", right, "err", err)
 				} else {
 					last = right
-					log.Info("match done", "project", project, "current Id", last, "total", total, "matched crossIn", matched)
+					log.Info("match done", "project", matcher.Project(), "current Id", last, "total", total, "matched crossIn", matched)
 				}
 			}
 		}
@@ -118,7 +108,7 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 			return
 		}
 
-		cnt, errs := matcher.UpdateAnyswapMatchTag(project, results)
+		cnt, errs := matcher.UpdateAnyswapMatchTag(results)
 		if errs != nil {
 			utils.LogError(errs, "./error.log")
 		}
@@ -129,7 +119,7 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	if err != nil {
 		return
 	}
-	shouldUpdates, err := matcher.Match(project, results)
+	shouldUpdates, err := matcher.Match(results)
 	if err != nil {
 		return
 	}
