@@ -480,17 +480,29 @@ func (a *Processor) GetUnmatchAddress(d *dao.Dao, table_name string) {
 
 func (m *Processor) MarkTxWithFakeToken(d *dao.Dao, project string) {
 	stmt := fmt.Sprintf("select address from contracts where project='%s' and safe = 'F'", project)
-	token_chains := []*string{}
+	token_chains := []string{}
 	err := d.DB().Select(&token_chains, stmt)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	println(len(token_chains))
+	size := len(token_chains) / 10
+	i := 0
+	for ; i < len(token_chains)-2*size; i = i + size {
+		go m.markToken(d, token_chains[i:i+size])
+	}
+	m.markToken(d, token_chains[i:])
+}
+
+func (m *Processor) markToken(d *dao.Dao, token_chains []string) {
 	for _, e := range token_chains {
-		stmt = fmt.Sprintf("update %s set isFakeToken=1 where token='%s'", project, *e)
+		stmt := fmt.Sprintf("update anyswap set isfaketoken=1 where token='%s'", e)
 		_, err := d.DB().Exec(stmt)
 		if err != nil {
 			fmt.Println(err)
+		} else {
+			println("done ", e)
 		}
 	}
 }
@@ -566,4 +578,44 @@ func (m *Processor) UpdateRisk(da *dao.Dao, datas []*model.Data) {
 		}
 	}
 	println("update risks all done")
+}
+
+type A struct {
+	Hash  string `db:"hash"`
+	Id    uint64 `db:"m"`
+	Count int    `db:"c"`
+	Index int    `db:"log_index"`
+}
+
+func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
+	stmt := "select count(hash) as c,  min(id) as m, hash, log_index from across a where id > 1551400 group by hash, log_index"
+	var datas []*A
+	err := d.DB().Select(&datas, stmt)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	println(len(datas))
+	size := len(datas) / 10
+	i := 0
+	var done = make(chan struct{})
+	for ; i < len(datas)-2*size; i = i + size {
+		go deleteAcrossDuplicates(d, datas[i:i+size], done)
+	}
+	deleteAcrossDuplicates(d, datas[i:], done)
+	<-done
+}
+
+func deleteAcrossDuplicates(d *dao.Dao, datas []*A, done chan struct{}) {
+	for _, data := range datas {
+		if data.Count > 1 {
+			stmt := fmt.Sprintf("delete from across where hash = '%s' and log_index = %d and id != %d", data.Hash, data.Index, data.Id)
+			_, err := d.DB().Exec(stmt)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+		}
+	}
+	done <- struct{}{}
 }

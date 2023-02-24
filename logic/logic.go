@@ -10,6 +10,7 @@ import (
 	"app/utils"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/schollz/progressbar/v3"
 	"time"
 )
 
@@ -35,7 +36,7 @@ func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic 
 // fake token 和 fake chainId
 //chainID的检查还没完成
 
-func (a *Logic) CheckFake(project string, datas model.Datas, unsafe_tokens_chan chan map[int]model.Datas) {
+func (a *Logic) CheckFake(project string, datas model.Datas, unsafe_tokens_chan chan map[int]model.Datas, bar *progressbar.ProgressBar) {
 	if datas == nil || len(datas) == 0 {
 		return
 	}
@@ -45,11 +46,12 @@ func (a *Logic) CheckFake(project string, datas model.Datas, unsafe_tokens_chan 
 		if isfake := a.fake_checker.IsFakeToken(project, d); isfake != check_fake.SAFE {
 			res_list[isfake] = append(res_list[isfake], d)
 		} else {
-			stmt := fmt.Sprintf("update %s set isfaketoken = 0", project)
+			stmt := fmt.Sprintf("update %s set isfaketoken = 0 where id = %d", project, d.Id)
 			if _, err := a.svc.Dao.DB().Exec(stmt); err != nil {
 				fmt.Println("failed to update safe token: ", d.Token)
 			}
 		}
+		bar.Add(1)
 	}
 	unsafe_tokens_chan <- res_list
 	return

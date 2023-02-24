@@ -6,30 +6,31 @@ import (
 	"app/matcher"
 	"app/model"
 	"app/svc"
+	"app/utils"
 	"github.com/ethereum/go-ethereum/log"
 	log2 "log"
 )
 
 type SimpleOutDetector struct {
-	svc     *svc.ServiceContext
-	logic   *logic.Logic
-	matcher *matcher.Matcher
-	last_id uint64
+	svc      *svc.ServiceContext
+	logic    *logic.Logic
+	matcher  *matcher.Matcher
+	start_id uint64
 }
 
 var _ model.Detector = &SimpleOutDetector{}
 
-func NewSimpleOutDetector(svc *svc.ServiceContext, chain string, config_path string, last_id uint64) *SimpleOutDetector {
+func NewSimpleOutDetector(svc *svc.ServiceContext, chain string, config_path string, start_id uint64) *SimpleOutDetector {
 	return &SimpleOutDetector{
-		svc:     svc,
-		logic:   logic.NewLogic(svc, chain, config_path),
-		matcher: matcher.NewMatcher(svc),
-		last_id: last_id,
+		svc:   svc,
+		logic: logic.NewLogic(svc, chain, config_path),
+		//matcher: matcher.NewMatcher(svc),
+		start_id: start_id,
 	}
 }
 
-func (a *SimpleOutDetector) LastId() uint64 {
-	return a.last_id
+func (a *SimpleOutDetector) LastDetectId() uint64 {
+	return a.start_id
 }
 
 // OutDetector的 Detect 用于检测所有tx的fake token & chainID，将没有match的做二次检测
@@ -39,17 +40,19 @@ func (a *SimpleOutDetector) DetectFake(project string, datas model.Datas) int {
 	var unsafe_chan = make(chan map[int]model.Datas)
 	var size, i = len(datas) / 20, 0
 	var res = make(map[int]model.Datas)
-
+	var done_chan = make(chan struct{})
+	var bar = utils.Bar(size, "", done_chan)
 	//协程处理datas
 	for ; i < len(datas)-2*size; i = i + size {
-		go a.logic.CheckFake(project, datas[i:i+size], unsafe_chan)
+		go a.logic.CheckFake(project, datas[i:i+size], unsafe_chan, bar)
 		unsafe_map := <-unsafe_chan
 		for tag, dts := range unsafe_map {
 			res[tag] = append(res[tag], dts...)
 		}
 	}
-	go a.logic.CheckFake(project, datas[i:], unsafe_chan)
+	go a.logic.CheckFake(project, datas[i:], unsafe_chan, bar)
 	unsafe_map := <-unsafe_chan
+	<-done_chan
 	for tag, dts := range unsafe_map {
 		res[tag] = append(res[tag], dts...)
 	}
@@ -70,17 +73,20 @@ func (a *SimpleOutDetector) DetectOutTx(project string, datas model.Datas) int {
 	var unsafe_chan = make(chan map[int]model.Datas)
 	var size, i = len(datas) / 20, 0
 	var res = make(map[int]model.Datas)
+	var doneCh chan struct{}
+	bar := utils.Bar(size, "detecting out tx", doneCh)
 
 	//协程处理datas
 	for ; i < len(datas)-2*size; i = i + size {
-		go a.logic.CheckFake(project, datas[i:i+size], unsafe_chan)
+		go a.logic.CheckFake(project, datas[i:i+size], unsafe_chan, bar)
 		unsafe_map := <-unsafe_chan
 		for tag, dts := range unsafe_map {
 			res[tag] = append(res[tag], dts...)
 		}
 	}
-	go a.logic.CheckFake(project, datas[i:], unsafe_chan)
+	go a.logic.CheckFake(project, datas[i:], unsafe_chan, bar)
 	unsafe_map := <-unsafe_chan
+	<-doneCh
 	for tag, dts := range unsafe_map {
 		res[tag] = append(res[tag], dts...)
 	}

@@ -140,31 +140,14 @@ func TestProcessor_UpdateRisk(t *testing.T) {
 	m.UpdateRisk(d, datas[i:])
 }
 
-func TestP(t *testing.T) {
-	stmt := "select * from anyswap where direction = 'out' and match_tag =''"
-	data := []*model.Data{}
-	err := d.DB().Select(&data, stmt)
-	if err != nil {
-		fmt.Println(err)
-	}
-	println(len(data))
-
-	//size := len(data) / 200
-	//i := 0
-	/*
-		for ; i < len(data)-2*size; i = i + size {
-			go f(data[i : i+size])
-		}*/
-	f(data)
+func TestProcessor_MarkWithToken(t *testing.T) {
+	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	a := Processor{}
+	a.MarkTxWithFakeToken(d, "Anyswap")
 }
 
-func f(data model.Datas) {
-	for _, i := range data {
-		stmt := fmt.Sprintf("update anyswap set match_tag = hash where id=%d", i.Id)
-		_, err := d.DB().Exec(stmt)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	fmt.Println("done: ", data[len(data)-1].Id)
+func TestProcessor_DeleteAcrossDuplicate(t *testing.T) {
+	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	a := Processor{}
+	a.DeleteAcrossDuplicate(d)
 }

@@ -24,8 +24,8 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 	return &Detector{
 		svc: svc,
 		projects: map[string]model.Detector{
-			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(7501665)),
-			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1549959)),
+			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(7486366)),
+			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1546668)),
 		},
 	}
 }
@@ -42,7 +42,7 @@ func (m *Detector) Start() {
 func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
-	var last = detector.LastId()
+	var last = detector.LastDetectId()
 	log2.SetPrefix("StartDetectFake()")
 	log.Info("fakeDetector start", "project", project, "start Id", last)
 	timer := time.NewTimer(1 * time.Second)

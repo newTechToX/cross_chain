@@ -16,50 +16,60 @@ const (
 	batchSize = 10000
 )
 
+var Projects = []string{
+	"anyswap", "across",
+}
+
 type Matcher struct {
 	svc      *svc.ServiceContext
 	projects map[string]model.Matcher
 }
 
-func NewMatcher(svc *svc.ServiceContext) *Matcher {
+func NewMatcher(svc *svc.ServiceContext, startIds map[string]uint64) *Matcher {
+	if _, ok := startIds["anyswap"]; !ok {
+		return nil
+	}
+	if _, ok := startIds["across"]; !ok {
+		return nil
+	}
+	var projects = make(map[string]model.Matcher)
+	for _, project := range Projects {
+		projects[project] = NewSimpleInMatcher(project, svc.ProjectsDao, startIds[project])
+	}
 	return &Matcher{
-		svc: svc,
-		/*projects: map[string]model.Matcher{
-			anyswap.NewAnyswapCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
-			across.NewAcrossCollector().Name():        NewSimpleInMatcher(svc.ProjectsDao),
-			celer_bridge.NewCBridgeCollector().Name(): NewSimpleInMatcher(svc.ProjectsDao),
-			wormhole.NewWormHoleCollector(nil).Name(): NewSimpleInMatcher(svc.ProjectsDao),
-			stargate.NewStargateCollector(nil).Name(): NewSimpleInMatcher(svc.ProjectsDao),
-			synapse.NewSynapseCollector(nil).Name():   NewSimpleInMatcher(svc.ProjectsDao),
-		},*/
-		projects: map[string]model.Matcher{
-			"anyswap": NewSimpleInMatcher(svc.ProjectsDao, uint64(7121480)),
-			"across":  NewSimpleInMatcher(svc.ProjectsDao, uint64(1547700)),
-		},
+		svc:      svc,
+		projects: projects,
 	}
 }
+
+/*func (m *Matcher) SetStartId(project string, id uint64) {
+	m.projects[project] = NewSimpleInMatcher(m.svc.ProjectsDao, id)
+}
+
+func (m *Matcher) PrintStartId() {
+	for project := range m.projects {
+		fmt.Println(m.projects[project].LastId())
+	}
+}*/
 
 func (m *Matcher) Start() {
-	for project, matcher := range m.projects {
-		go m.StartMatch(project, matcher)
+	for _, matcher := range m.projects {
+		go m.StartMatch(matcher)
 	}
 }
 
-func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
+func (m *Matcher) StartMatch(matcher model.Matcher) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
-	log.Info("matcher start", "project", project)
 	timer := time.NewTimer(1 * time.Second)
-	cnt := 0
-	var LAST = matcher.LastId()
-	var last = LAST
+	var last = matcher.LastUnmatchId()
+	log.Info("matcher start", "Project", matcher.project, "Start ID", last)
 	for {
 		select {
 		case <-m.svc.Ctx.Done():
 			log.Info("match svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
-			cnt += 1
 			latest, err := m.svc.Dao.LatestId(project)
 			if err != nil {
 				log.Error("get latest id failed", "projet", project, "err", err)
@@ -83,10 +93,6 @@ func (m *Matcher) StartMatch(project string, matcher model.Matcher) {
 					last = right
 					log.Info("match done", "project", project, "current Id", last, "total", total, "matched crossIn", matched)
 				}
-			}
-			if cnt >= 10 {
-				cnt = 0
-				last = LAST
 			}
 		}
 		timer.Reset(interval * time.Second)

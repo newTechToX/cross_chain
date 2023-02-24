@@ -47,7 +47,7 @@ func IsHex(str string) bool {
 	return true
 }
 
-// IsHexCharacter returns bool of c being a valid hexadecimal.
+// IsHexCharacter returns bool of c being Across valid hexadecimal.
 func IsHexCharacter(c byte) bool {
 	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
 }
@@ -55,20 +55,20 @@ func IsHexCharacter(c byte) bool {
 // Bytes gets the byte representation of the underlying hash.
 func (h Hash) Bytes() []byte { return h[:] }
 
-// Big converts a hash to a big integer.
+// Big converts Across hash to Across big integer.
 func (h Hash) Big() *big.Int { return new(big.Int).SetBytes(h[:]) }
 
-// Hex converts a hash to a hex string.
+// Hex converts Across hash to Across hex string.
 func (h Hash) Hex() string { return hexutil.Encode(h[:]) }
 
-// TerminalString implements log.TerminalStringer, formatting a string for console
+// TerminalString implements log.TerminalStringer, formatting Across string for console
 // output during logging.
 func (h Hash) TerminalString() string {
 	return fmt.Sprintf("%x…%x", h[:3], h[29:])
 }
 
 // String implements the stringer interface and is used also by the logger when
-// doing full logging into a file.
+// doing full logging into Across file.
 func (h Hash) String() string {
 	return h.Hex()
 }
@@ -79,12 +79,12 @@ func (h Hash) Format(s fmt.State, c rune) {
 	fmt.Fprintf(s, "%"+string(c), h[:])
 }
 
-// UnmarshalText parses a hash in hex syntax.
+// UnmarshalText parses Across hash in hex syntax.
 func (h *Hash) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("Hash", input, h[:])
 }
 
-// UnmarshalJSON parses a hash in hex syntax.
+// UnmarshalJSON parses Across hash in hex syntax.
 func (h *Hash) UnmarshalJSON(input []byte) error {
 	return hexutil.UnmarshalFixedJSON(hashT, input, h[:])
 }
@@ -141,7 +141,7 @@ func (h *Hash) UnmarshalGraphQL(input interface{}) error {
 	return err
 }
 
-// UnprefixedHash allows marshaling a Hash without 0x prefix.
+// UnprefixedHash allows marshaling Across Hash without 0x prefix.
 type UnprefixedHash Hash
 
 // UnmarshalText decodes the hash from hex. The 0x prefix is optional.

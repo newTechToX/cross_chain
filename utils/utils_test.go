@@ -8,6 +8,7 @@ import (
 	"log"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParse(t *testing.T) {
@@ -106,7 +107,7 @@ func TestIsEmpty(t *testing.T) {
 	a := &ReturnData{&Labels{nil, 1}, 4}
 	b := &ReturnData{nil, 1}
 	if IsEmpty(a.Labels) {
-		println("a.Labels")
+		println("Across.Labels")
 	}
 	if IsEmpty(b.Labels) {
 		println("b")
@@ -122,19 +123,66 @@ func TestMax(t *testing.T) {
 
 func TestSendMail(t *testing.T) {
 	//定义收件人
-	mailTo := []string{
-		"hxhsia@163.com",
-	}
 	//邮件主题为"Hello"
 	subject := "Hello by golang gomail from 163.com"
 	// 邮件正文
 	body := "Hello,by gomail sent"
 
-	err := SendMail(mailTo, subject, body)
+	err := SendMail(subject, body)
 	if err != nil {
 		log.Println(err)
 		fmt.Println("send fail")
 		return
 	}
 	fmt.Println("send successfully")
+}
+
+func TestBar(t *testing.T) {
+	donCh := make(chan struct{})
+	//bar := make(chan *progressbar.ProgressBar)
+	//ba := Bar(1000, "sdfsf", donCh)
+	for i := 0; i < 5; i++ {
+		go ff()
+	}
+	//bar := Bar(1000, "sdfsf", doneCh)
+	//doneCh := make(chan struct{})
+	go ff()
+	<-donCh
+	fmt.Println("\n ======= progress bar completed ==========")
+}
+
+/*func f(bar *progressbar.ProgressBar) {
+	bar := progressbar.NewOptions(34,
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionSetDescription("sss"),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+	for i := 0; i < 1000; i++ {
+		bar.Add(1)
+		time.Sleep(5 * time.Millisecond)
+	}
+}*/
+
+func f() {
+	for i := 0; i < 20000; i++ {
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func ff() {
+	doneCh := make(chan struct{})
+	b := Bar(1000, "sdfsf", doneCh)
+	for i := 0; i < 1000000; i++ {
+		b.Add(1)
+		time.Sleep(5 * time.Millisecond)
+	}
 }
