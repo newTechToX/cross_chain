@@ -167,6 +167,12 @@ func (d *Dao) Update(project string, results model.Datas) (err error) {
 	return
 }
 
+func (d *Dao) Delete(project string, id uint64) error {
+	stmt := fmt.Sprintf("delete from %s where id = %d", project, id)
+	_, err := d.db.Exec(stmt)
+	return err
+}
+
 func (d *Dao) UpdateAnyswapMatchTag(project string, results model.Datas) int {
 	tx, err := d.db.Beginx()
 	cnt := 0

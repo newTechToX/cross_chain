@@ -190,3 +190,11 @@ func deleteDuplicates(chain string) {
 	}
 	println(chain, "deleted ", cnt)
 }
+
+func Test4(t *testing.T) {
+	a := []int{1, 2, 3}
+	for i := range a[1:] {
+		a = a[:i+1+copy(a[i+1:], a[i+2:])]
+	}
+	fmt.Println(a)
+}

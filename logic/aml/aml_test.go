@@ -1,7 +1,10 @@
 package aml
 
 import (
+	"app/dao"
+	"app/model"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -40,4 +43,35 @@ func TestNewAML(t *testing.T) {
 	}
 	ss := c.name()
 	println(ss)
+}
+
+func TestAML_QueryAml2(t *testing.T) {
+	a := NewAML("../txt_config.yaml")
+	stmt := "select chain, token from anyswap a where isfaketoken != 1 group by chain, token"
+	var d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	var datas = model.TokenChains{}
+	if err := d.DB().Select(&datas, stmt); err != nil {
+		fmt.Println(err)
+	}
+	println(len(datas))
+	for _, data := range datas {
+		info, _ := a.QueryAml(data.Chain, []string{data.Token})
+		if v, ok := info[data.Token]; ok {
+			for _, dd := range v {
+				if strings.Contains(strings.ToLower(dd.Name), "multichain") ||
+					strings.Contains(strings.ToLower(dd.Name), "any") {
+					stmt = "update anyswap set isfaketoken = 0 where chain = $1 and token = $2"
+					if _, err := d.DB().Exec(stmt, dd.Chain, dd.Address); err != nil {
+						fmt.Println(err)
+					}
+				} else {
+					println(dd.Chain, dd.Address)
+				}
+				println(strings.ToLower(dd.Name), dd.Chain, dd.Address)
+				for _, e := range dd.Labels {
+					println(e)
+				}
+			}
+		}
+	}
 }

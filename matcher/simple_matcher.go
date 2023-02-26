@@ -78,7 +78,7 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		// if len(pending) > 1 {
 		// 	log.Error("multi matched", "src", crossIn.Hash)
 		// }
-		valid := make(model.Datas, 0)
+		valid_ := make(model.Datas, 0)
 		multi := false
 		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
@@ -93,21 +93,20 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 				var dup model.Data
 				if err = a.dao.DB().Get(&dup, stmt); err != nil {
 					fmt.Println(err)
-				} else if dup.Hash == crossIn.Hash && dup.Number != crossIn.Number {
+				} else if isDuplicated(&dup, crossIn) {
 					multi = false
+					err = a.dao.Delete(a.Project(), crossIn.Id)
+				} else {
 					dups = append(dups, &dup)
 					dups = append(dups, counterparty)
 				}
-			}
-			if !multi {
-				valid = append(valid, counterparty)
+			} else {
+				//如果没有匹配的，就添加入更新列表
+				valid_ = append(valid_, counterparty)
 				fillEmptyFields(counterparty, crossIn)
 			}
 		}
-		if len(valid) > 1 {
-			log.Warn("out tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
-		}
-		if len(valid) == 0 {
+		if len(valid_) == 0 {
 			if !multi {
 				a.SendMail("UNMATCH", dups)
 				log.Error("unmatch", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
@@ -115,8 +114,26 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 				a.SendMail("MULTI MATCHED IN", dups)
 				log.Error("in tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
 			}
+			continue
 		}
-		if len(valid) == 1 {
+
+		valid := model.Datas{valid_[0]}
+		if len(valid_) > 1 {
+			for _, data := range valid_[1:] {
+				if isDuplicated(data, valid_[0]) {
+					err = a.dao.Delete(a.Project(), data.Id)
+				} else {
+					valid = append(valid, data)
+				}
+			}
+		}
+		if len(valid) > 1 {
+			dups = append(dups, valid...)
+			a.SendMail("MULTI MATCHED OUT", dups)
+			log.Error("out tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
+
+		}
+		if len(valid) >= 1 {
 			shouldUpdates = append(shouldUpdates, crossIn)
 			shouldUpdates = append(shouldUpdates, valid...)
 		}
@@ -221,4 +238,12 @@ func (a *SimpleInMatcher) SendMail(sub string, datas []*model.Data) {
 		errs := []*error{&e}
 		utils.LogError(errs, "./risk.log")
 	}
+}
+
+func isDuplicated(b, c *model.Data) bool {
+	if (b.Hash == c.Hash && b.Number != c.Number) ||
+		(b.Hash == c.Hash && b.Number == c.Number && b.Index == c.Index) {
+		return true
+	}
+	return false
 }

@@ -16,6 +16,7 @@ import (
 
 var cfg config.Config
 var srvCtx *svc.ServiceContext
+var d = dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
 func init() {
 	config.LoadCfg(&cfg, "../config.yaml")
@@ -27,7 +28,6 @@ func init() {
 }
 
 func TestSimpleInMatcher_UpdateAnyswapMatchTag(t *testing.T) {
-	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
 	//m.BeginMatch(id-1, id+1, "across", a)
 	var data model.Datas
@@ -39,9 +39,9 @@ func TestSimpleInMatcher_UpdateAnyswapMatchTag(t *testing.T) {
 	println(len(data))
 	var m = &Matcher{}
 	m.svc = srvCtx
-	a := NewSimpleInMatcher(srvCtx.ProjectsDao, id)
+	a := NewSimpleInMatcher("anyswap", srvCtx.ProjectsDao, id)
 	//m.BeginMatch(id-1, id+1, "anyswap", a)
-	n, _ := a.UpdateAnyswapMatchTag("anyswap", data)
+	n, _ := a.UpdateAnyswapMatchTag(data)
 	println(n)
 }
 
@@ -49,4 +49,15 @@ func TestNewSimpleInMatcher(t *testing.T) {
 	ss := "0x8dceda860bf5d56dce08dbe172dafe6faf79b9ea197b5357fb3939add6b49cb8"
 	tt := common.BytesToHash([]byte(ss))
 	fmt.Println(tt)
+}
+
+func TestSimpleInMatcher_Match(t *testing.T) {
+	id := 7552917
+	stmt := "select * from anyswap where id = 7552917"
+	var data model.Datas
+	if err := d.DB().Select(&data, stmt); err != nil {
+		fmt.Println(err)
+	}
+	a := NewSimpleInMatcher("anyswap", srvCtx.ProjectsDao, uint64(id))
+	a.Match(data)
 }

@@ -581,15 +581,16 @@ func (m *Processor) UpdateRisk(da *dao.Dao, datas []*model.Data) {
 }
 
 type A struct {
-	Hash  string `db:"hash"`
-	Id    uint64 `db:"m"`
-	Count int    `db:"c"`
-	Index int    `db:"block_number"`
+	Hash   string `db:"hash"`
+	Id     uint64 `db:"m"`
+	Count  int    `db:"c"`
+	Number int    `db:"block_number"`
+	Index  int    `db:"log_index"`
 }
 
 func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
 	//stmt := "with t as (select count(hash) as c,  min(id) as m, hash, log_index from across a where id > 1551400 group by hash, log_index) select * from t where c != 1"
-	stmt := "with t as (select count(block_number) as c,  min(id) as m, hash, block_number from across a where id > 1551400 group by hash, block_number ) select * from t where c != 1"
+	stmt := "with t as (select count(log_index) as c,  min(id) as m, hash, block_number, log_index from anyswap a where id > 7536000 group by hash, block_number, log_index ) select * from t where c != 1"
 	var datas []*A
 	err := d.DB().Select(&datas, stmt)
 	if err != nil {
@@ -610,7 +611,7 @@ func (m *Processor) DeleteAcrossDuplicate(d *dao.Dao) {
 func deleteAcrossDuplicates(d *dao.Dao, datas []*A, done chan struct{}) {
 	for _, data := range datas {
 		if data.Count > 1 {
-			stmt := fmt.Sprintf("delete from across where hash = '%s' and block_number = %d and id != %d", data.Hash, data.Index, data.Id)
+			stmt := fmt.Sprintf("delete from anyswap where hash = '%s' and block_number = %d and log_index = %d and match_id is null", data.Hash, data.Number, data.Index)
 			_, err := d.DB().Exec(stmt)
 			if err != nil {
 				fmt.Println(err)
