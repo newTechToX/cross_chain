@@ -8,6 +8,7 @@ import (
 	"app/utils"
 	"database/sql"
 	"fmt"
+	log2 "github.com/ethereum/go-ethereum/log"
 	"log"
 	"strings"
 )
@@ -26,6 +27,9 @@ const (
 )
 
 func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *FakeChecker {
+	if svc.Providers == nil {
+		println("svc provider nil")
+	}
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
@@ -46,7 +50,6 @@ func (c *FakeChecker) Aml() *aml.AML {
 
 func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 	res := a.queryTable(project, t)
-	a.provider = (&provider.Providers{}).Get(t.Chain)
 	var errs []*error
 
 	switch res {
@@ -62,9 +65,10 @@ func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 
 		//如果aml里面也查不到token，就查deployers
 		if info_from_aml[t.Token] == nil {
-			s := fmt.Sprintf("nothing: query token from providers, chain:%s, address:%s", t.Chain, t.Token)
-			log.SetPrefix("IsFakeToken()")
-			log.Println(s)
+			if a.provider == nil {
+				println("provider nil")
+			}
+			log2.Warn("IsFakeToken(), failed to query token from aml ", "Project", project, "Chain", t.Chain, "Token", t.Token)
 			deployer_info_from_provider, err := a.provider.GetContractInfo(t.Token)
 			if err != nil {
 				s := fmt.Sprintf("failed to query token from providers, chain:%s, address:%s", t.Chain, t.Token)
@@ -118,8 +122,7 @@ func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 		break
 
 	case FAKE_TOKEN:
-		s := fmt.Errorf("fake token: fake token in database, chain:%s, address:%s", t.Chain, t.Token)
-		log.SetPrefix("IsFakeToken()")
+		s := fmt.Errorf("fake token: fake token in database, chain:%s, address:%s, hash:%s", t.Chain, t.Token, t.Hash)
 		errs = append(errs, &s)
 		break
 

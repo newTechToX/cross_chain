@@ -6,12 +6,11 @@ import (
 	"app/utils"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
-	log2 "log"
 	"time"
 )
 
 const (
-	interval_fake = 1 * 60
+	interval_fake = 20
 	batchSize     = 10000
 )
 
@@ -20,12 +19,12 @@ type Detector struct {
 	projects map[string]model.Detector
 }
 
-func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
+func NewDetector(svc *svc.ServiceContext, config_path string, startIds map[string]uint64) *Detector {
 	return &Detector{
 		svc: svc,
 		projects: map[string]model.Detector{
-			"anyswap": NewSimpleOutDetector(svc, "ethereum", config_path, uint64(7486366)),
-			"across":  NewSimpleOutDetector(svc, "ethereum", config_path, uint64(1546668)),
+			"anyswap": NewSimpleOutDetector(svc, "anyswap", "ethereum", config_path, startIds["anyswap"]),
+			"across":  NewSimpleOutDetector(svc, "across", "ethereum", config_path, startIds["across"]),
 		},
 	}
 }
@@ -35,28 +34,26 @@ func NewDetector(svc *svc.ServiceContext, config_path string) *Detector {
 
 func (m *Detector) Start() {
 	for project, detector := range m.projects {
-		go m.StartDetectFake(project, detector)
+		go m.StartDetectOutTx(project, detector)
 	}
 }
 
-func (m *Detector) StartDetectFake(project string, detector model.Detector) {
+func (m *Detector) StartDetectOutTx(project string, detector model.Detector) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
 	var last = detector.LastDetectId()
-	log2.SetPrefix("StartDetectFake()")
 	log.Info("fakeDetector start", "project", project, "start Id", last)
 	timer := time.NewTimer(1 * time.Second)
 	for {
 		t1 := time.Now()
 		select {
 		case <-m.svc.Ctx.Done():
-			log2.SetPrefix("StartDetectFake()")
 			log.Info("detect svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
 			latest, err := m.svc.Dao.LatestId(project)
 			if err != nil {
-				log.Error("StartDetectFake() get latest id failed", "projet", project, "err", err)
+				log.Error("StartDetectOutTx() get latest id failed", "projet", project, "err", err)
 				break
 			}
 			for last < latest {
@@ -70,15 +67,13 @@ func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				fake, err := m.beginDetectFake(last+1, right, project, detector)
+				fake, err := m.beginDetectOutTx(last+1, right, project, detector)
 				if err != nil {
-					log2.SetPrefix("StartDetectFake()")
 					log.Error("detectFake job failed", "project", project, "from", last+1, "to", right, "err", err)
 				} else {
 					last = right
 					t2 := time.Now()
-					log2.SetPrefix("StartDetectFake()")
-					log.Info("detectFake done", "project", project, "current Id", last, "batch size", batchSize,
+					log.Info("\ndetectFake done", "project", project, "current Id", last, "batch size", batchSize,
 						"fake", fake, "time", t2.Sub(t1).String())
 				}
 			}
@@ -87,7 +82,7 @@ func (m *Detector) StartDetectFake(project string, detector model.Detector) {
 	}
 }
 
-func (m *Detector) beginDetectFake(from, to uint64, project string, detector model.Detector) (fake int, err error) {
+func (m *Detector) beginDetectOutTx(from, to uint64, project string, detector model.Detector) (fake int, err error) {
 	var stmt string
 	switch detector.(type) {
 	case *SimpleOutDetector:
@@ -100,7 +95,7 @@ func (m *Detector) beginDetectFake(from, to uint64, project string, detector mod
 	if err != nil {
 		return
 	}
-	fake = detector.DetectFake(project, results)
+	fake = detector.DetectOutTx(results)
 	if err != nil {
 		return
 	}

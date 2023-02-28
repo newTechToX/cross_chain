@@ -32,11 +32,14 @@ func NewSimpleInMatcher(project string, dao *dao.Dao, start_id uint64) *SimpleIn
 
 func (a *SimpleInMatcher) LastUnmatchId() uint64 {
 	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in (1, 10, 56, 137, 250, 42161, 43114)", a.project, a.start_id)
-	var id = a.start_id
+	type ID struct {
+		Id uint64 `db:"min"`
+	}
+	var id = ID{a.start_id}
 	if err := a.dao.DB().Get(&id, stmt); err != nil {
 		log.Warn("failed to get unmatchId", "project", a.project, "ERROR", err)
 	} else {
-		a.start_id = id
+		a.start_id = id.Id
 	}
 	return a.start_id
 }
@@ -79,7 +82,7 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		// 	log.Error("multi matched", "src", crossIn.Hash)
 		// }
 		valid_ := make(model.Datas, 0)
-		multi := false
+		multi := 0
 		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
@@ -87,14 +90,14 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 			}
 
 			if counterparty.MatchId.Valid {
-				multi = true
+				multi = 1
 				//说明已经match过，但有可能是数据重复的原因
 				stmt = fmt.Sprintf("select %s from %s where id = %d", model.ResultRows, a.project, counterparty.MatchId.Int64)
 				var dup model.Data
 				if err = a.dao.DB().Get(&dup, stmt); err != nil {
 					fmt.Println(err)
 				} else if isDuplicated(&dup, crossIn) {
-					multi = false
+					multi = 2
 					err = a.dao.Delete(a.Project(), crossIn.Id)
 				} else {
 					dups = append(dups, &dup)
@@ -107,10 +110,10 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 			}
 		}
 		if len(valid_) == 0 {
-			if !multi {
+			if multi == 0 {
 				a.SendMail("UNMATCH", dups)
 				log.Error("unmatch", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
-			} else {
+			} else if multi == 1 {
 				a.SendMail("MULTI MATCHED IN", dups)
 				log.Error("in tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
 			}

@@ -16,7 +16,6 @@ type Tags struct {
 	FromAddressError int
 	ToAddressProfit  int
 	TokenProfitError int
-	IsFakeToken      int
 	Risk             int
 }
 
@@ -31,19 +30,16 @@ const profit_address_not_found_label = 6
 /*
 已经标注的fake token --> 做验证
 */
-func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data, tag_chan chan Tags) (err error) {
+func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, err error) {
 	//to = token
-	tag := Tags{0, 0, 0, 0, 0}
+	tag = Tags{0, 0, 0, 0}
 
 	var profit []*aml.AddressInfo
-	if data.ToAddress == data.Token && !data.IsFakeToken.Valid {
-		tag.IsFakeToken = 2
-	}
 
 	tx, err := a.Replay(data)
 	if err != nil || tx == nil {
 		err = fmt.Errorf("failed to replay %s, error: %s", data.Hash, err)
-		return err
+		return
 	}
 
 	//检查from_address的行为
@@ -147,7 +143,6 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data, tag_chan cha
 	if err != nil {
 		fmt.Println(err)
 	}
-	tag_chan <- tag
 	return
 }
 
@@ -276,7 +271,7 @@ balance change的逻辑 --> 检测所有cross=out（无论是否match）
 
 // 更新表字段
 var (
-	logicUpdateNames = []string{"tag, from_address_error", "to_address_profit", "token_profit_error"}
+	logicUpdateNames = []string{"from_address_error", "to_address_profit", "token_profit_error"}
 	logicUpdateRows  = strings.Join(logicUpdateNames, ",")
 	logicUpdateTags  = builder.PostgreSqlJoin(logicUpdateNames)
 )
@@ -291,10 +286,9 @@ func (a *Replayer) logicUpdate(Id uint64, profit []byte, table string, tag Tags)
 	}
 
 	stmt := fmt.Sprintf("update %s set %s, profit=$1 where id = %d", table, logicUpdateTags, Id)
-	// fmt.Println(stmt)
-	_, err = d.DB().Exec(stmt, profit, tag.Risk, tag.FromAddressError, tag.ToAddressProfit, tag.TokenProfitError)
+	_, err = d.DB().Exec(stmt, profit, tag.FromAddressError, tag.ToAddressProfit, tag.TokenProfitError)
 	if err != nil {
-		log.Error("update failed", "err", err)
+		log.Warn("replay_logic.logicUpdate(), update failed", "err", err)
 	}
 	return err
 }

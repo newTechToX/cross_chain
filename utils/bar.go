@@ -5,7 +5,7 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
-func Bar(max int, description string, doneCh chan struct{}) *progressbar.ProgressBar {
+func Bar(max int, description string) *progressbar.ProgressBar {
 	return progressbar.NewOptions(max,
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
@@ -19,8 +19,8 @@ func Bar(max int, description string, doneCh chan struct{}) *progressbar.Progres
 			BarStart:      "[",
 			BarEnd:        "]",
 		}),
-		progressbar.OptionOnCompletion(func() {
+		/*progressbar.OptionOnCompletion(func() {
 			doneCh <- struct{}{}
-		}),
+		}),*/
 	)
 }

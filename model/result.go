@@ -70,29 +70,28 @@ type LabelInfo struct {
 }
 
 type Data struct {
-	Id               uint64         `db:"id"`
-	MatchId          sql.NullInt64  `db:"match_id"`
-	Chain            string         `db:"chain"`
-	Number           uint64         `db:"block_number"`
-	Index            uint64         `db:"tx_index"`
-	Hash             string         `db:"hash"`
-	ActionId         uint64         `db:"log_index"`
-	Contract         string         `db:"contract"`
-	Direction        string         `db:"direction"`
-	FromChainId      *BigInt        `db:"from_chain"`
-	FromAddress      string         `db:"from_address"`
-	ToChainId        *BigInt        `db:"to_chain"`
-	ToAddress        string         `db:"to_address"`
-	Token            string         `db:"token"`
-	Amount           *BigInt        `db:"amount"`
-	MatchTag         string         `db:"match_tag"`
-	Profit           []byte         `db:"profit"`
-	FromAddressError sql.NullInt64  `db:"from_address_error"`
-	ToAddressProfit  sql.NullInt64  `db:"to_address_profit"`
-	TokenProfitError sql.NullInt64  `db:"token_profit_error"`
-	IsFakeToken      sql.NullInt64  `db:"isfaketoken"`
-	Tag              sql.NullString `db:"tag"`
-	Project          string         `db:"project"`
+	Id               uint64        `db:"id"`
+	MatchId          sql.NullInt64 `db:"match_id"`
+	Chain            string        `db:"chain"`
+	Number           uint64        `db:"block_number"`
+	Index            uint64        `db:"tx_index"`
+	Hash             string        `db:"hash"`
+	ActionId         uint64        `db:"log_index"`
+	Contract         string        `db:"contract"`
+	Direction        string        `db:"direction"`
+	FromChainId      *BigInt       `db:"from_chain"`
+	FromAddress      string        `db:"from_address"`
+	ToChainId        *BigInt       `db:"to_chain"`
+	ToAddress        string        `db:"to_address"`
+	Token            string        `db:"token"`
+	Amount           *BigInt       `db:"amount"`
+	MatchTag         string        `db:"match_tag"`
+	Profit           []byte        `db:"profit"`
+	FromAddressError sql.NullInt64 `db:"from_address_error"`
+	ToAddressProfit  sql.NullInt64 `db:"to_address_profit"`
+	TokenProfitError sql.NullInt64 `db:"token_profit_error"`
+	IsFakeToken      sql.NullInt64 `db:"isfaketoken"`
+	Project          string        `db:"project"`
 }
 
 type Datas []*Data
@@ -101,7 +100,7 @@ var CommonFiledNames = []string{
 	"id", "chain", "block_number", "tx_index", "hash", "log_index", "contract",
 	"direction", "from_chain", "from_address", "to_chain", "to_address", "token",
 	"amount", "match_tag", "profit", "from_address_error", "to_address_profit",
-	"token_profit_error", "isfaketoken", "tag",
+	"token_profit_error", "isfaketoken",
 }
 
 var (
