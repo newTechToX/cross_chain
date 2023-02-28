@@ -81,5 +81,6 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	close(responseChannel)
 	// 等待wgResponse的计数器归零
 	wgResponse.Wait()
+	bar.Close()
 	return detected
 }

@@ -4,6 +4,10 @@ import (
 	"time"
 )
 
+var ReplaySupportChains = map[string]struct{}{
+	"eth": {}, "ethereum": {}, "bsc": {}, "polygon": {}, "arbitrum": {}, "avalanche": {},
+}
+
 type Config struct {
 	ReplayAccessToken string `yaml:"ReplayAccessToken"`
 }

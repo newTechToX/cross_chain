@@ -135,3 +135,9 @@ func TestSendMail(t *testing.T) {
 	}
 	fmt.Println("send successfully")
 }
+
+func TestConvertSlice2Map(t *testing.T) {
+	sr := []string{"3", "2", "4"}
+	a := ConvertSlice2Map(sr)
+	fmt.Println(a)
+}

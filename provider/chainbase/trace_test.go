@@ -24,9 +24,17 @@ func TestExec1(t *testing.T) {
 }
 
 func TestExec2(t *testing.T) {
-	ret, err := Exec[*Trace]("select * from ethereum.transactions where block_number >= 16000000 and block_number < 16000015", "2FtLTBTxc9h7CX3YwBeEkrMlnhc", "")
-	fmt.Println(err)
-	utils.PrintPretty(ret)
+	hash := "0x20ed37da82fd0c2ae9ad0fdd699bce1f40a2ce06e37b06a32001f4ff08cb3433"
+	type Sender struct {
+		S string `json:"from_address"`
+	}
+	stmt := fmt.Sprintf("select from_address from %s.transactions where transaction_hash='%s'", "arbitrum", hash)
+	ret, err := Exec[*Sender](stmt, "2FtLTBTxc9h7CX3YwBeEkrMlnhc", "")
+	if err != nil {
+		fmt.Println(err)
+	}
+	println(ret[0].S)
+
 }
 
 /*func TestExec3(t *testing.T) {

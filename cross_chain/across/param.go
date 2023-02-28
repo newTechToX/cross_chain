@@ -17,18 +17,23 @@ const (
 var AcrossContracts = map[string][]string{
 	"eth": {
 		"0x4d9079bb4165aeb4084c526a32695dcfd2f77381",
+		"0x931a43528779034ac9eb77df799d133557406176",
 	},
 	"arbitrum": {
 		"0xB88690461dDbaB6f04Dfad7df66B7725942FEb9C",
+		"0xe1c367e2b576ac421a9f46c9cc624935730c36aa",
 	},
 	"polygon": {
 		"0x69B5c72837769eF1e7C164Abc6515DcFf217F920",
+		"0xd3ddacae5afb00f9b9cd36ef0ed7115d7f0b584c",
 	},
 	"optimism": {
 		"0xa420b2d1c0841415A695b81E5B867BCD07Dff8C9",
+		"0x59485d57eecc4058f7831f46ee83a7078276b4ae",
 	},
 	"boba": {
 		"0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58",
+		"0x7229405a2f0c550ce35182ee1658302b65672443",
 	},
 }
 

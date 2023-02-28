@@ -1,13 +1,31 @@
 package replay
 
 import (
+	"app/config"
 	"app/dao"
 	"app/model"
+	"app/provider/chainbase"
+	"app/svc"
+	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
+	"os"
 	"strconv"
 	"testing"
 )
+
+var cfg config.Config
+var srvCtx *svc.ServiceContext
+
+func init() {
+	config.LoadCfg(&cfg, "../../config.yaml")
+	srvCtx = svc.NewServiceContext(context.Background(), &cfg)
+	log.Root().SetHandler(log.LvlFilterHandler(
+		log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false)),
+	))
+	chainbase.SetupLimit(10)
+}
 
 /*func TestReplay_Replay_tx(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
@@ -30,10 +48,9 @@ import (
 
 func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
-
 	a := NewReplayer(nil, nil, "../txt_config.yaml")
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
-	id := 1573213
+	id := 1574621
 	//stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)
 	stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
 
@@ -43,6 +60,7 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 		fmt.Println(err)
 	}
 
+	a.svc = srvCtx
 	tag, err := a.ReplayOutTxLogic("across", datas[0])
 	fmt.Println(tag)
 }
@@ -132,7 +150,7 @@ func TestCheckFromWithSwap(t *testing.T) {
 	for _, e := range tx.BalanceChanges {
 		if e.Account == data.ToAddress {
 			for _, ee := range e.Assets {
-				flag, tokens := a.checkFrom_Token(p, ee.Address, data.Amount.String(), e)
+				flag, tokens := a.checkFromToken(p, ee.Address, data.Amount.String(), e)
 				println(flag)
 				println(len(tokens))
 			}
@@ -165,7 +183,7 @@ func test_token_error_1(datas []*model.Data) {
 			continue
 		}
 
-		real_token := a.getRealToken(d.Token, tx.BalanceChanges)
+		real_token := a.getRealToken("", "", d.Token, tx.BalanceChanges)
 
 		for _, value := range real_token {
 			x := new(model.BigInt).SetString(value.Amount, 10)

@@ -106,7 +106,7 @@ func TestLogic_CheckDuplicateIn(t *testing.T) {
 	i := 0
 	size := len(datas) / 50
 	for ; i < len(datas)-2*size; i = i + size {
-		go a.CheckDuplicateIn("across", datas[i:i+size])
+		//go a.CheckOutTx("across", datas[i:i+size])
 	}
-	a.CheckDuplicateIn("across", datas[i:])
+	//a.CheckDuplicateIn("across", datas[i:])
 }

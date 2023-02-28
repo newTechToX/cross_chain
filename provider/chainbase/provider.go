@@ -416,3 +416,12 @@ func (p *Provider) GetTraces(chain, hash string) ([]*SyChainbaseInfo, error) {
 	ret, err := Exec[*SyChainbaseInfo](stmt, p.apiKey, p.proxy)
 	return ret, err
 }
+
+func (p *Provider) GetSender(chain, hash string) (string, error) {
+	type S struct {
+		Sender string `json:"from_address"`
+	}
+	stmt := fmt.Sprintf("select from_address from %s.transactions where transaction_hash='%s'", chain, hash)
+	ret, err := Exec[*S](stmt, p.apiKey, p.proxy)
+	return ret[0].Sender, err
+}

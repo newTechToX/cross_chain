@@ -27,9 +27,6 @@ const (
 )
 
 func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *FakeChecker {
-	if svc.Providers == nil {
-		println("svc provider nil")
-	}
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))
@@ -65,9 +62,6 @@ func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 
 		//如果aml里面也查不到token，就查deployers
 		if info_from_aml[t.Token] == nil {
-			if a.provider == nil {
-				println("provider nil")
-			}
 			log2.Warn("IsFakeToken(), failed to query token from aml ", "Project", project, "Chain", t.Chain, "Token", t.Token)
 			deployer_info_from_provider, err := a.provider.GetContractInfo(t.Token)
 			if err != nil {

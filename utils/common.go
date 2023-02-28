@@ -45,7 +45,6 @@ func Contains[T constraints.Ordered](target T, slice []T) bool {
 	return false
 }
 
-//
 func ParseDateTime(ts string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", ts)
 }
@@ -74,4 +73,26 @@ func DeleteSliceElementByValue[T constraints.Ordered](s []T, e T) []T {
 		}
 	}
 	return s[:i]
+}
+
+func LowerStringMap(a map[string][]string) map[string][]string {
+	b := make(map[string][]string, len(a))
+	for k, list := range a {
+		b[strings.ToLower(k)] = make([]string, len(list))
+		for _, v := range list {
+			b[strings.ToLower(k)] = append(b[strings.ToLower(k)], strings.ToLower(v))
+		}
+	}
+	return b
+}
+
+func ConvertSlice2Map[T constraints.Ordered](s []T) map[T]struct{} {
+	if len(s) == 0 {
+		return nil
+	}
+	set := make(map[T]struct{}, len(s))
+	for _, v := range s {
+		set[v] = struct{}{}
+	}
+	return set
 }

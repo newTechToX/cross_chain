@@ -57,9 +57,12 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 		}
 
 		//查replayOutLogic
-		/*tag, err := a.replayer.ReplayOutTxLogic(project, data)
+		if _, ok := replay.ReplaySupportChains[data.Chain]; !ok {
+			continue
+		}
+		tag, err := a.replayer.ReplayOutTxLogic(project, data)
 		if err != nil {
-			log.Warn("CheckOutTx(), err: ", err)
+			log.Warn("CheckOutTx(), ", "err", err)
 		}
 		if tag.TokenProfitError != check_fake.SAFE || tag.FromAddressError != check_fake.SAFE ||
 			tag.ToAddressProfit != check_fake.SAFE {
@@ -67,7 +70,7 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 			info := fmt.Sprintf("%s out tx error: chain:%s, hash:%s, token profit: %d, from profit: %d, to profit: %d",
 				project, data.Chain, data.Hash, tag.TokenProfitError, tag.FromAddressError, tag.ToAddressProfit)
 			utils.SendMail("OUT TX ERROR DETECTED ", info)
-		}*/
+		}
 
 		bar.Add(1)
 	}
