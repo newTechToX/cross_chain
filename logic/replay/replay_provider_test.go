@@ -31,11 +31,11 @@ import (
 func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
-	a := NewReplayer(nil, nil, "./txt_config.yaml")
+	a := NewReplayer(nil, nil, "../txt_config.yaml")
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
-	id := 445126
+	id := 1573213
 	//stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)
-	stmt := fmt.Sprintf("select * from anyswap where id = %d", id)
+	stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
 
 	var datas = []*model.Data{}
 	err := d.DB().Select(&datas, stmt)
@@ -43,7 +43,8 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	err = a.replayOutTxLogic("anyswap", datas[0])
+	tag, err := a.ReplayOutTxLogic("across", datas[0])
+	fmt.Println(tag)
 }
 
 func TestReplayer_CalValue(t *testing.T) {

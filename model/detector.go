@@ -1,7 +1,7 @@
 package model
 
 type Detector interface {
-	DetectFake(string, Datas) int
-	DetectOutTx(string, Datas) int
+	DetectOutTx(Datas) int
+	//DetectOutTx(string, Datas) int
 	LastDetectId() uint64
 }

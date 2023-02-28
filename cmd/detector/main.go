@@ -16,6 +16,8 @@ import (
 	"syscall"
 )
 
+var Anyswap = flag.Uint64("m", uint64(7564009), "input anyswap startId")
+var Across = flag.Uint64("a", uint64(1571070), "input across startId")
 var logLvl = flag.String("log_level", "info", "set log level")
 var batchSize = flag.Int("batch_size", 1000, "set fetch batch size")
 var pprofPort = flag.String("pprof", "6060", "set pprof port")
@@ -28,6 +30,14 @@ func main() {
 		panic(err)
 	}
 	aggregator.BatchSize = uint64(*batchSize)
+
+	for i := 0; i != flag.NArg(); i++ {
+		fmt.Printf("arg[%d]=%s\n", i, flag.Arg(i))
+	}
+	var startIds = map[string]uint64{
+		"anyswap": *Anyswap,
+		"across":  *Across,
+	}
 	go func() {
 		fmt.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", *pprofPort), nil))
 	}()
@@ -51,7 +61,7 @@ func main() {
 
 	config.LoadCfg(&cfg, "./config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
-	l := detector.NewDetector(srvCtx, "./logic/txt_config.yaml")
+	l := detector.NewDetector(srvCtx, "./logic/txt_config.yaml", startIds)
 	l.Start()
 	if err != nil {
 		fmt.Println(err)

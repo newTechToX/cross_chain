@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type Replayer struct {
@@ -47,7 +46,7 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 	}
 	body := Body{}
 
-	time.Sleep(6 * time.Second)
+	//time.Sleep(6 * time.Second)
 	buffer, err := a.replay(data)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 		return tx, err
 	}
 	if len(tx.BalanceChanges) == 0 {
-		println("no balance changes ", data.Hash, data.Chain)
+		println("Replay(), no balance changes ", data.Hash, data.Chain)
 	}
 
 	return tx, err
@@ -89,7 +88,7 @@ func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := (&http.Client{}).Do(req)
 	if err != nil {
-		log.Error("failed request ", err.Error())
+		log.Error("replay(), failed request ", err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()

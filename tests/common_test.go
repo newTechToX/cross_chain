@@ -3,8 +3,11 @@ package tests
 import (
 	"app/dao"
 	"app/model"
+	"app/utils"
 	"fmt"
+	"github.com/schollz/progressbar/v3"
 	"regexp"
+	"sync"
 	"testing"
 	"time"
 )
@@ -191,10 +194,85 @@ func deleteDuplicates(chain string) {
 	println(chain, "deleted ", cnt)
 }
 
-func Test4(t *testing.T) {
+func Test_Copy_slice(t *testing.T) {
 	a := []int{1, 2, 3}
 	for i := range a[1:] {
 		a = a[:i+1+copy(a[i+1:], a[i+2:])]
 	}
 	fmt.Println(a)
+}
+
+func Test_go(t *testing.T) {
+	t1 := time.Now()
+
+	list := []int{1, 2, 5}
+	res := collect(list)
+	t2 := time.Now()
+	fmt.Println(t2.Sub(t1).String())
+	fmt.Println(res)
+}
+
+func f(list []int, response chan int, limiter chan bool, wg *sync.WaitGroup, bar *progressbar.ProgressBar) {
+
+	defer wg.Done()
+	for _, i := range list {
+		time.Sleep(2 * time.Second)
+		println(i)
+	}
+	response <- list[0]
+	bar.Add(1)
+	<-limiter
+}
+
+func collect(urls []int) []int {
+	var result []int
+	//var donCh chan struct{}
+	bar := utils.Bar(3, "do")
+	wg := &sync.WaitGroup{}
+	// 控制并发数为10
+	limiter := make(chan bool, 10)
+	defer close(limiter)
+	responseChannel := make(chan int, 20)
+	// 为读取结果控制器创建新的WaitGroup, 需要保证控制器内的所有值都已经正确处理完毕, 才能结束
+	wgResponse := &sync.WaitGroup{}
+	// 启动读取结果的控制器
+	go func() {
+		// wgResponse计数器+1
+		wgResponse.Add(1)
+		// 读取结果
+		for response := range responseChannel {
+			// 处理结果
+			result = append(result, response)
+		}
+		// 当 responseChannel被关闭时且channel中所有的值都已经被处理完毕后, 将执行到这一行
+		wgResponse.Done()
+	}()
+	for i := range urls {
+		// 计数器+1
+		wg.Add(1)
+		limiter <- true
+		// 这里在启动goroutine时, 将用来收集结果的局部变量channel也传递进去
+		go f(urls[i:], responseChannel, limiter, wg, bar)
+	}
+
+	// 等待所以协程执行完毕
+	wg.Wait() // 当计数器为0时, 不再阻塞
+	fmt.Println("所有协程已执行完毕")
+
+	// 关闭接收结果channel
+	close(responseChannel)
+
+	// 等待wgResponse的计数器归零
+	wgResponse.Wait()
+
+	// 返回聚合后结果
+	return result
+}
+
+func TestSqlNULLint(t *testing.T) {
+	d := model.Data{}
+	d.IsFakeToken.Scan(1)
+	if d.IsFakeToken.Valid && d.IsFakeToken.Int64 == 1 {
+		println("pk")
+	}
 }
