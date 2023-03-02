@@ -15,7 +15,7 @@ const (
 // LogAcrossOut (index_topic_1 address token, index_topic_2 address from, index_topic_3 address to, uint256 amount, uint256 fromChainID, uint256 toChainID)
 
 var AcrossContracts = map[string][]string{
-	"eth": {
+	"ethereum": {
 		"0x4d9079bb4165aeb4084c526a32695dcfd2f77381",
 		"0x931a43528779034ac9eb77df799d133557406176",
 	},

@@ -63,14 +63,14 @@ func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 		//如果aml里面也查不到token，就查deployers
 		if info_from_aml[t.Token] == nil {
 			log2.Warn("IsFakeToken(), failed to query token from aml ", "Project", project, "Chain", t.Chain, "Token", t.Token)
+			a.provider = a.svc.Providers.Get(t.Chain)
 			deployer_info_from_provider, err := a.provider.GetContractInfo(t.Token)
-			if err != nil {
+			if err != nil || deployer_info_from_provider == nil {
 				s := fmt.Sprintf("failed to query token from providers, chain:%s, address:%s", t.Chain, t.Token)
 				log.SetPrefix("IsFakeToken()")
 				utils.LogPrint(s, "./logic.log")
 				break
 			}
-
 			tw = []string{deployer_info_from_provider.Deployer}
 			deployer_info_aml, err := a.aml.QueryAml(t.Chain, tw)
 			if err != nil {

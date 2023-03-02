@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/schollz/progressbar/v3"
+	log2 "log"
+
 	"sync"
 )
 
@@ -62,16 +64,16 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 		}
 		tag, err := a.replayer.ReplayOutTxLogic(project, data)
 		if err != nil {
-			log.Warn("CheckOutTx(), ", "err", err)
+			log2.SetPrefix("CheckOutTx()")
+			utils.LogPrint(err.Error(), "../logic.log")
 		}
 		if tag.TokenProfitError != check_fake.SAFE || tag.FromAddressError != check_fake.SAFE ||
-			tag.ToAddressProfit != check_fake.SAFE {
+			(tag.ToAddressProfit != check_fake.SAFE && tag.FromAddressError != replay.FROM_TRANSFER_ERROR) {
 			num++
 			info := fmt.Sprintf("%s out tx error: chain:%s, hash:%s, token profit: %d, from profit: %d, to profit: %d",
 				project, data.Chain, data.Hash, tag.TokenProfitError, tag.FromAddressError, tag.ToAddressProfit)
 			utils.SendMail("OUT TX ERROR DETECTED ", info)
 		}
-
 		bar.Add(1)
 	}
 	detected <- num

@@ -21,13 +21,13 @@ type Tags struct {
 	Risk             int
 }
 
-const from_token_amount, from_token_type, from_transfer_error = 1, 2, 3
+const FROM_TOKEN_AMOUNT, FROM_TOKEN_TYPE, FROM_TRANSFER_ERROR = 1, 2, 3
 
 // token_profit_minus_amount意味着token获利金额与amount参数不一致
 // other...意味着token获利金额与amount参数一致，
-const token_profit_minus_amount, other_address_profit = 2, 1
+const TOKEN_PROFIT_MINUS_AMOUNT, OTHER_ADDRESS_PROFIT = 2, 1
 
-const profit_address_not_found_label = 6
+const PROFIT_ADDRESS_NOT_FOUND_LABEL = 6
 
 /*
 已经标注的fake token --> 做验证
@@ -35,9 +35,7 @@ const profit_address_not_found_label = 6
 func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, err error) {
 	//to = token
 	tag = Tags{0, 0, 0, 0}
-
 	var profit []*aml.AddressInfo
-
 	tx, err := a.Replay(data)
 	if err != nil || tx == nil {
 		err = fmt.Errorf("failed to replay %s, error: %s", data.Hash, err)
@@ -51,7 +49,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 		tag.TokenProfitError = 1
 	}
 
-	tag.FromAddressError = from_transfer_error //先初始化，防止根本没有from资金动态
+	tag.FromAddressError = FROM_TRANSFER_ERROR //先初始化，防止根本没有from资金动态
 
 	is_depositor := false
 	for _, e := range tx.BalanceChanges {
@@ -61,6 +59,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 		}
 	}
 
+	//如果数据中的from_address不在balance——change里面，那么就获取tx_sender作为from_address再检查一次
 	if !is_depositor {
 		provider := a.svc.Providers.Get(data.Chain)
 		data.FromAddress, err = provider.GetSender(data.Chain, data.Hash)
@@ -82,6 +81,9 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	addresses := []string{}
 
 	for i := range idx {
+		if tx.BalanceChanges[i].Account == data.Token {
+			continue
+		}
 		if tx.BalanceChanges[i].Account == data.ToAddress && data.Token != data.ToAddress {
 			println("toaddr_profit ", data.Hash)
 			tag.ToAddressProfit = 1
@@ -90,21 +92,27 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	}
 
 	//查询所有非to_address的获利地址信息并记录下来
-	info, err := a.aml.QueryAml(data.Chain, addresses)
-	for _, labels := range info {
-		tag.Risk = labels[0].Risk
-		profit = append(profit, labels[0])
-	}
-	if info == nil {
-		for _, addr := range addresses {
-			profit = append(profit,
-				&aml.AddressInfo{
-					Chain:   data.Chain,
-					Address: addr,
-					Risk:    profit_address_not_found_label,
-				})
+	if len(addresses) > 0 {
+		info, err := a.aml.QueryAml(data.Chain, addresses)
+		if err != nil {
+			log.Warn("replay.ReplayOutTxLogic(): Failed to query profit addresses", "Error ", err)
 		}
-		tag.Risk = profit_address_not_found_label
+		if info == nil {
+			for _, addr := range addresses {
+				profit = append(profit,
+					&aml.AddressInfo{
+						Chain:   data.Chain,
+						Address: addr,
+						Risk:    PROFIT_ADDRESS_NOT_FOUND_LABEL,
+					})
+			}
+			tag.Risk = PROFIT_ADDRESS_NOT_FOUND_LABEL
+		} else {
+			for _, labels := range info {
+				tag.Risk = labels[0].Risk
+				profit = append(profit, labels[0])
+			}
+		}
 	}
 
 	//检查token的获利是否符合
@@ -152,8 +160,8 @@ func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*
 						}
 					}
 				}
+				break
 			}
-			break
 		}
 	} else {
 		for _, e := range balanceChanges {
@@ -211,9 +219,8 @@ func (a *Replayer) getPreviousToken(token string, balance_changes []*SimAccountB
 
 func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data, amount string, e *SimAccountBalance, tx *SimulatedTxn) int {
 	ret := a.checkFromOnce(real_token, data.Token, amount, e)
-
 	//如果arg_token != deposit_token
-	if ret == from_token_type {
+	if ret == FROM_TOKEN_TYPE {
 		ret = check_fake.SAFE
 		previous_token := make(map[string]*DecAmount)
 
@@ -226,21 +233,17 @@ func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data,
 		}
 
 		//检查两跳
-		if flag, problem_tokens := a.checkFromToken(previous_token, data.Token, amount, e); flag != from_token_amount && len(problem_tokens) != 0 {
-			d := &dao.Dao{}
-			if a.svc == nil {
-				d = dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
-			} else {
-				d = a.svc.Dao
-			}
-
+		if flag, problem_tokens := a.checkFromToken(previous_token, data.Token, amount, e); flag != FROM_TOKEN_AMOUNT && len(problem_tokens) != 0 {
 			//如果两跳仍然无法对应arg_token和deposit_token，那么就查标签
 			for _, token := range problem_tokens {
-				if safe, _ := d.QueryLabel(token); !safe {
-					//如果deposit_token unsafe
-					ret += from_token_type
-				} else {
-					ret += 0
+				info, err := a.aml.QueryAml(data.Chain, []string{token})
+				if _, ok := info[token]; !ok || err != nil {
+					log.Warn("CheckFrom(): Failed to query aml about token ", "Chain", data.Chain, "token ", token)
+					continue
+				}
+				contain_map := a.aml.AmlInfoContainWords(info[token], []string{"exploit"})
+				if _, ok := contain_map["exploit"]; ok {
+					ret = FROM_TOKEN_TYPE
 				}
 			}
 		} else {
@@ -251,20 +254,18 @@ func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data,
 }
 
 func (a *Replayer) checkFromOnce(underlying map[string]*DecAmount, token, amount string, balance *SimAccountBalance) int {
-
 	res := 0
-
 	//只能检查第一跳，没有查到的token暂时不需要查标签库
-	if flag, problem_tokens := a.checkFromToken(underlying, token, amount, balance); flag == from_token_amount {
-		res = from_token_amount
+	if flag, problem_tokens := a.checkFromToken(underlying, token, amount, balance); flag == FROM_TOKEN_AMOUNT {
+		res = FROM_TOKEN_AMOUNT
 	} else if len(problem_tokens) != 0 {
-		res = from_token_type
+		res = FROM_TOKEN_TYPE
 	}
 
 	//depositor的所有资金之和应当小于0
 	value := a.CalAmount(balance)
 	if value.String() >= "0" {
-		res = from_transfer_error
+		res = FROM_TRANSFER_ERROR
 	}
 	return res
 }
@@ -272,18 +273,24 @@ func (a *Replayer) checkFromOnce(underlying map[string]*DecAmount, token, amount
 // 1. from转出的token与token_address收到的token是否一致
 // 2. 返回的是from转出的token中，所有有问题的token_address（amount不对或者在underlying中查不到）
 func (a *Replayer) checkFromToken(underlying map[string]*DecAmount, token, amount string, balance *SimAccountBalance) (flag int, res []string) {
-	flag = 0
+	flag = FROM_TRANSFER_ERROR // 如果from_address有转出，那么
 	for _, asset := range balance.Assets {
-		if v, ok := underlying[asset.Address]; ok {
-			//如果转出的token已经被记录，或者转出的就是arg_token，那么就检查amount
-			//如果amount不正确，那么该交易有问题
-			x := a.GetFloatAmount(asset.Amount, asset.Decimals)
-			vv := a.GetFloatAmount(v.Amount, v.Decimals)
-			if x.String() != "-"+vv.String() {
-				flag = from_token_amount
+		if _, ok := underlying[asset.Address]; ok || asset.Address == token {
+			amount_str := ""
+			if asset.Amount[0] == '-' {
+				amount_str = asset.Amount[1:]
+				flag = check_fake.SAFE
+			} else {
+				amount_str = asset.Amount
 			}
-		} else if asset.Address == token && asset.Amount[1:] != amount {
-			flag = from_token_amount
+			from_addr_amount := a.GetFloatAmount(amount_str, asset.Decimals)
+			log_amount := a.GetFloatAmount(amount, asset.Decimals)
+			//假设最多收取1/10的手续费
+			fee := from_addr_amount.Mul(0.1)
+			diff := new(model.BigFloat).Sub(from_addr_amount, log_amount)
+			if diff.Cmp(fee) > 0 {
+				flag = FROM_TOKEN_AMOUNT
+			}
 		} else {
 			//如果deposit_token仍然查不到，那么返回token地址，查标签库
 			res = append(res, asset.Address)
@@ -344,7 +351,7 @@ func (a *Replayer) checkTokenProfit(realToken map[string]*DecAmount, amount *mod
 
 		xx := new(model.BigInt).SetString(value.Amount, 10)
 		if xx.Cmp(amount) < 0 {
-			return token_profit_minus_amount
+			return TOKEN_PROFIT_MINUS_AMOUNT
 		}
 
 		sum, _ := new(big.Float).SetPrec(uint(256)).SetString("0")
@@ -374,7 +381,7 @@ func (a *Replayer) checkTokenProfit(realToken map[string]*DecAmount, amount *mod
 		}
 
 		if x != y {
-			return other_address_profit
+			return OTHER_ADDRESS_PROFIT
 		}
 	}
 	return 0

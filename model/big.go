@@ -157,6 +157,18 @@ func (x *BigFloat) Cmp(y *BigFloat) int {
 	return (*big.Float)(x).Cmp((*big.Float)(y))
 }
 
+func (c *BigFloat) Sub(x, y *BigFloat) *BigFloat {
+	a := (*big.Float)(x)
+	b := (*big.Float)(y)
+	return (*BigFloat)((*big.Float)(c).Sub(a, b))
+}
+
+func (x *BigFloat) Mul(y float64) *BigFloat {
+	a := (*big.Float)(x)
+	b := big.NewFloat(y)
+	return (*BigFloat)(a.Mul(a, b))
+}
+
 func (z *BigFloat) ConvertToBigInt() *BigInt {
 	s := strings.Split(z.String(), ".")
 	ss := s[0] + s[1]

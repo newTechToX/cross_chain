@@ -73,6 +73,15 @@ func TestGetCalls(t *testing.T) {
 	utils.PrintPretty(len(ret))
 }
 
+func TestProvider_GetContractInfo(t *testing.T) {
+	p := NewProvider("bsc", "2FtLTBTxc9h7CX3YwBeEkrMlnhc", false, "")
+	ret, err := p.GetContractInfo("0x8d0def48048785645869f3e8ca7414e1b86f80c4")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(ret.Deployer)
+}
+
 func TestGetLogs(t *testing.T) {
 	log.Root().SetHandler(log.LvlFilterHandler(
 		log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false)),

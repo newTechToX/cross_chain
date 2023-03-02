@@ -423,5 +423,9 @@ func (p *Provider) GetSender(chain, hash string) (string, error) {
 	}
 	stmt := fmt.Sprintf("select from_address from %s.transactions where transaction_hash='%s'", chain, hash)
 	ret, err := Exec[*S](stmt, p.apiKey, p.proxy)
+	if len(ret) == 0 || err != nil {
+		log.Warn("GetSender(): failed to get sender", "Chain ", chain, "Hash ", hash, "Error ", err.Error())
+		return "", err
+	}
 	return ret[0].Sender, err
 }

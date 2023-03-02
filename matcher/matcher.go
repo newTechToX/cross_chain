@@ -52,7 +52,8 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 	m.svc.Wg.Add(1)
 	defer m.svc.Wg.Done()
 	timer := time.NewTimer(1 * time.Second)
-	var last = matcher.LastUnmatchId()
+	//var last = matcher.LastUnmatchId()
+	var last = uint64(7505698)
 	log.Info("matcher start", "project", matcher.Project(), "Start ID", last)
 	for {
 		select {

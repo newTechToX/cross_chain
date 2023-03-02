@@ -34,7 +34,27 @@ func NewAML(config_path string) *AML {
 	return nil
 }
 
-//如果从aml没有查到信息，那么在map[string]=nil
+func (a *AML) AmlInfoContainWords(info []*AddressInfo, words []string) map[string]struct{} {
+	if len(info) == 0 || len(words) == 0 {
+		return nil
+	}
+	var res = make(map[string]struct{})
+	for _, word := range words {
+		for _, i := range info {
+			description := i.Name
+			for _, l := range i.Labels {
+				description = description + "," + l
+			}
+			if strings.Contains(description, word) {
+				res[word] = struct{}{}
+				break
+			}
+		}
+	}
+	return res
+}
+
+//如果从aml没有查到信息，那么在map里没有信息
 
 func (a *AML) QueryAml(chain string, address []string) (map[string][]*AddressInfo, error) {
 	var raw_msg *RawMsg
@@ -60,11 +80,11 @@ func (a *AML) QueryAml(chain string, address []string) (map[string][]*AddressInf
 	}
 
 	res := a.getInfo(raw_msg.Data)
-	for _, addr := range address {
+	/*for _, addr := range address {
 		if _, ok := res[addr]; !ok {
 			res[addr] = nil
 		}
-	}
+	}*/
 	return res, err
 }
 

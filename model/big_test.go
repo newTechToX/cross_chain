@@ -27,3 +27,12 @@ func Test1(y *testing.T) {
 	b := a / 3
 	println(b)
 }
+
+func TestBigFloat_Sub(t *testing.T) {
+	s := "56.78"
+	a := new(BigFloat).SetString(s)
+	d := "88.5"
+	b := new(BigFloat).SetString(d)
+	c := new(BigFloat).Sub(a, b)
+	fmt.Println(c.String(), a.String())
+}

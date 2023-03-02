@@ -96,9 +96,15 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 				var dup model.Data
 				if err = a.dao.DB().Get(&dup, stmt); err != nil {
 					fmt.Println(err)
+
+				} else if dup.Hash == "" { //如果之前匹配的数据被删除了
+					valid_ = append(valid_, counterparty)
+					fillEmptyFields(counterparty, crossIn)
+
 				} else if isDuplicated(&dup, crossIn) {
 					multi = 2
 					err = a.dao.Delete(a.Project(), crossIn.Id)
+
 				} else {
 					dups = append(dups, &dup)
 					dups = append(dups, counterparty)
@@ -121,7 +127,7 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		}
 
 		valid := model.Datas{valid_[0]}
-		if len(valid_) > 1 {
+		if len(valid_) > 1 { //有可能是重复的cross-out tx，需要删除
 			for _, data := range valid_[1:] {
 				if isDuplicated(data, valid_[0]) {
 					err = a.dao.Delete(a.Project(), data.Id)
