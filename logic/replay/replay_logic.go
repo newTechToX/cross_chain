@@ -370,6 +370,11 @@ func (a *Replayer) checkTokenProfit(realToken map[string]*DecAmount, amount *mod
 			dis := sum.Quo(sum, denominator)
 			sum = sum.Sub(sum, dis)*/
 		var x, y = (*model.BigFloat)(sum).String()[1:], value.Amount
+		x_ := strings.Split(x, ",")
+		x = ""
+		for _, e := range x_ {
+			x += e
+		}
 		var length = len(y)
 		if len(x) > length {
 			if x[length] >= '5' {
