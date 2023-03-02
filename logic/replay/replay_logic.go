@@ -143,7 +143,7 @@ type DecAmount struct {
 	Decimals int
 }
 
-func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*SimAccountBalance) map[string]*DecAmount {
+/*func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*SimAccountBalance) map[string]*DecAmount {
 	underlying := make(map[string]*DecAmount)
 	burn_address := "0x0000000000000000000000000000000000000000"
 
@@ -195,6 +195,59 @@ func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*
 		}
 	}
 	return underlying
+}*/
+
+func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*SimAccountBalance) map[string]*DecAmount {
+	underlying := make(map[string]*DecAmount)
+	burn_address := "0x0000000000000000000000000000000000000000"
+
+	//如果该项目是特定contract收取cross-out的token
+	if v, ok := crosschain.OutTxReceiver[project]; ok {
+		out_receivers := v[chain]
+		for _, e := range balanceChanges {
+			if _, ok := out_receivers[e.Account]; ok {
+				for _, ee := range e.Assets {
+					if ee.Amount[0] != '-' {
+						underlying[ee.Address] = &DecAmount{
+							Amount:   ee.Amount,
+							Decimals: ee.Decimals,
+						}
+					}
+				}
+			}
+		}
+	} else {
+		for _, e := range balanceChanges {
+			//记录下token_addr收到的所有资金，也就是一跳
+			if e.Account == token {
+				for _, ee := range e.Assets {
+					if ee.Amount[0] != '-' {
+						underlying[ee.Address] = &DecAmount{
+							Amount:   ee.Amount,
+							Decimals: ee.Decimals,
+						}
+					}
+				}
+			}
+		}
+		if len(underlying) == 0 {
+			for _, e := range balanceChanges {
+				if e.Account == burn_address {
+					//从burn的地址里面找是否直接burn掉token
+					for _, ee := range e.Assets {
+						//if ee.Address == token && ee.Amount[0] != '-' {
+						if ee.Amount[0] != '-' {
+							underlying[ee.Address] = &DecAmount{
+								Amount:   ee.Amount,
+								Decimals: ee.Decimals,
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return underlying
 }
 
 // eg: ETH -> WETH -> anyETH，该函数可以用于查找前一个token的地址
@@ -221,7 +274,6 @@ func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data,
 	ret := a.checkFromOnce(real_token, data.Token, amount, e)
 	//如果arg_token != deposit_token
 	if ret == FROM_TOKEN_TYPE {
-		ret = check_fake.SAFE
 		previous_token := make(map[string]*DecAmount)
 
 		//获取所有arg_token的资金来源
@@ -231,8 +283,12 @@ func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data,
 				previous_token[k] = v
 			}
 		}
+		if len(previous_token) == 0 {
+			return ret
+		}
 
 		//检查两跳
+		ret = check_fake.SAFE
 		if flag, problem_tokens := a.checkFromToken(previous_token, data.Token, amount, e); flag != FROM_TOKEN_AMOUNT && len(problem_tokens) != 0 {
 			//如果两跳仍然无法对应arg_token和deposit_token，那么就查标签
 			for _, token := range problem_tokens {
@@ -369,12 +425,13 @@ func (a *Replayer) checkTokenProfit(realToken map[string]*DecAmount, amount *mod
 			denominator, _ := new(big.Float).SetString("100")
 			dis := sum.Quo(sum, denominator)
 			sum = sum.Sub(sum, dis)*/
-		var x, y = (*model.BigFloat)(sum).String()[1:], value.Amount
-		x_ := strings.Split(x, ",")
+		var y_ = a.GetFloatAmount(value.Amount, value.Decimals)
+		var x, y = (*model.BigFloat)(sum).String()[1:], y_.String()
+		/*x_ := strings.Split(x, ".")
 		x = ""
 		for _, e := range x_ {
 			x += e
-		}
+		}*/
 		var length = len(y)
 		if len(x) > length {
 			if x[length] >= '5' {

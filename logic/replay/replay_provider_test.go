@@ -51,20 +51,24 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	d := dao.NewAnyDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 	a := NewReplayer(nil, nil, "../txt_config.yaml")
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
-	id := 7580802
-	//stmt := fmt.Sprintf("select * from anyswap where hash = '%s'", hash)
-	stmt := fmt.Sprintf("select %s from anyswap where id = %d", model.ResultRows, id)
-
-	var datas = []*model.Data{}
-	err := d.DB().Select(&datas, stmt)
-	if err != nil {
-		fmt.Println(err)
+	id := []int{
+		1580341,
 	}
 
-	a.svc = srvCtx
-	a.aml = aml.NewAML("../txt_config.yaml")
-	tag, err := a.ReplayOutTxLogic("anyswap", datas[0])
-	fmt.Println(tag)
+	for _, i := range id {
+		stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, i)
+
+		var datas = []*model.Data{}
+		err := d.DB().Select(&datas, stmt)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		a.svc = srvCtx
+		a.aml = aml.NewAML("../txt_config.yaml")
+		tag, err := a.ReplayOutTxLogic("across", datas[0])
+		fmt.Println(tag)
+	}
 }
 
 func TestReplayer_CalValue(t *testing.T) {

@@ -39,7 +39,7 @@ func (a *SimpleInMatcher) LastUnmatchId() uint64 {
 	if err := a.dao.DB().Get(&id, stmt); err != nil {
 		log.Warn("failed to get unmatchId", "project", a.project, "ERROR", err)
 	} else {
-		a.start_id = id.Id
+		a.start_id = id.Id - 500
 	}
 	return a.start_id
 }

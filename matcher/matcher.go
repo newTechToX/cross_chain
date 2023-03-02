@@ -53,7 +53,7 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 	defer m.svc.Wg.Done()
 	timer := time.NewTimer(1 * time.Second)
 	//var last = matcher.LastUnmatchId()
-	var last = uint64(7505698)
+	var last = matcher.LastUnmatchId()
 	log.Info("matcher start", "project", matcher.Project(), "Start ID", last)
 	for {
 		select {
@@ -77,6 +77,7 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
+				last -= 300
 				total, matched, err := m.BeginMatch(last+1, right, matcher.Project(), matcher)
 				if err != nil {
 					log.Error("match job failed", "project", matcher.Project(), "from", last+1, "to", right, "err", err)
