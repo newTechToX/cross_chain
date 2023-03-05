@@ -80,7 +80,7 @@ func (a *Replayer) replay(data *model.Data) ([]byte, error) {
 	b, _ := json.Marshal(map[string]interface{}{
 		"chainID":  id,
 		"block":    data.Number,
-		"position": data.Index,
+		"position": data.TxIndex,
 		"bundle":   hash,
 	})
 	req, err := http.NewRequest("POST", a.url, strings.NewReader(string(b)))

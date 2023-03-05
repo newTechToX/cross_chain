@@ -67,8 +67,8 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 			log2.SetPrefix("CheckOutTx()")
 			utils.LogPrint(err.Error(), "../logic.log")
 		}
-		if tag.TokenProfitError != check_fake.SAFE || tag.FromAddressError != check_fake.SAFE ||
-			(tag.ToAddressProfit != check_fake.SAFE && tag.FromAddressError != replay.FROM_TRANSFER_ERROR) {
+		if tag.TokenProfitError != check_fake.SAFE || tag.FromAddressError == replay.FROM_TOKEN_AMOUNT ||
+			tag.ToAddressProfit != check_fake.SAFE || tag.FromAddressError == replay.FROM_TOKEN_TYPE {
 			num++
 			info := fmt.Sprintf("%s out tx error: chain:%s, hash:%s, token profit: %d, from profit: %d, to profit: %d",
 				project, data.Chain, data.Hash, tag.TokenProfitError, tag.FromAddressError, tag.ToAddressProfit)

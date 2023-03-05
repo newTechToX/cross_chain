@@ -43,9 +43,9 @@ func (a *Synapse) Extract_(chain string, events model.Events) model.Results {
 			Chain:    chain,
 			Number:   e.Number,
 			Ts:       e.Ts,
-			Index:    e.Index,
+			TxIndex:    e.TxIndex,
 			Hash:     e.Hash,
-			ActionId: e.Id,
+			LogIndex: e.Id,
 			Project:  a.Name(),
 			Contract: e.Address,
 		}

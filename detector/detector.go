@@ -51,6 +51,7 @@ func (m *Detector) StartDetectOutTx(project string, detector model.Detector) {
 			log.Info("detect svc done", "project", project, "current Id", last)
 			return
 		case <-timer.C:
+			println("timer.CCCC")
 			latest, err := m.svc.Dao.LatestId(project)
 			if err != nil {
 				log.Error("StartDetectOutTx() get latest id failed", "projet", project, "err", err)

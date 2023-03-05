@@ -58,9 +58,9 @@ func (r *RenBridge) Extract(chain string, msgs []*model.Call) model.Datas {
 		res := &model.Data{
 			Chain:    chain,
 			Number:   msg.Number,
-			Index:    msg.Index,
+			TxIndex:  msg.Index,
 			Hash:     msg.Hash,
-			ActionId: msg.Id,
+			LogIndex: msg.Id,
 			Contract: msg.To,
 			// non common
 			Token: contracts[chain][msg.To].Token,

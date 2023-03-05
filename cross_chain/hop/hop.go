@@ -40,9 +40,9 @@ func (a *Hop) Extract(chain string, events model.Events) model.Datas {
 		res := &model.Data{
 			Chain:    chain,
 			Number:   e.Number,
-			Index:    e.Index,
+			TxIndex:  e.Index,
 			Hash:     e.Hash,
-			ActionId: e.Id,
+			LogIndex: e.Id,
 			Contract: e.Address,
 		}
 

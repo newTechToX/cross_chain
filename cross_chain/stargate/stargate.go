@@ -97,9 +97,9 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Datas {
 		res := &model.Data{
 			Chain:       chain,
 			Number:      outPair[0].Number,
-			Index:       outPair[0].Index,
+			TxIndex:     outPair[0].Index,
 			Hash:        outPair[0].Hash,
-			ActionId:    outPair[0].Id,
+			LogIndex:    outPair[0].Id,
 			Contract:    outPair[0].Address,
 			Direction:   model.OutDirection,
 			FromChainId: (*model.BigInt)(utils.GetChainId(chain)),
@@ -144,9 +144,9 @@ func (a *Stargate) Extract(chain string, events model.Events) model.Datas {
 		res := &model.Data{
 			Chain:     chain,
 			Number:    inPair[1].Number,
-			Index:     inPair[1].Index,
+			TxIndex:   inPair[1].Index,
 			Hash:      inPair[1].Hash,
-			ActionId:  inPair[1].Id,
+			LogIndex:  inPair[1].Id,
 			Contract:  inPair[1].Address,
 			Direction: model.InDirection,
 			ToChainId: (*model.BigInt)(utils.GetChainId(chain)),

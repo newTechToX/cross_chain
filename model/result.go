@@ -14,9 +14,9 @@ import (
 	Chain       string        `db:"chain"`
 	Number      uint64        `db:"number"`
 	Ts          time.Time     `db:"ts"`
-	Index       uint64        `db:"index"`
+	TxIndex       uint64        `db:"index"`
 	Hash        string        `db:"hash"`
-	ActionId    uint64        `db:"action_id"`
+	    uint64        `db:"action_id"`
 	Project     string        `db:"project"`
 	Contract    string        `db:"contract"`
 	Direction   string        `db:"direction"`
@@ -74,9 +74,9 @@ type Data struct {
 	MatchId          sql.NullInt64 `db:"match_id"`
 	Chain            string        `db:"chain"`
 	Number           uint64        `db:"block_number"`
-	Index            uint64        `db:"tx_index"`
+	TxIndex          uint64        `db:"tx_index"`
 	Hash             string        `db:"hash"`
-	ActionId         uint64        `db:"log_index"`
+	LogIndex         uint64        `db:"log_index"`
 	Contract         string        `db:"contract"`
 	Direction        string        `db:"direction"`
 	FromChainId      *BigInt       `db:"from_chain"`

@@ -251,7 +251,7 @@ func (a *SimpleInMatcher) SendMail(sub string, datas []*model.Data) {
 
 func isDuplicated(b, c *model.Data) bool {
 	if (b.Hash == c.Hash && b.Number != c.Number) ||
-		(b.Hash == c.Hash && b.Number == c.Number && b.Index == c.Index) {
+		(b.Hash == c.Hash && b.Number == c.Number && b.LogIndex == c.LogIndex) {
 		return true
 	}
 	return false

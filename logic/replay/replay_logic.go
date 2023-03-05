@@ -310,11 +310,13 @@ func (a *Replayer) checkFrom(real_token map[string]*DecAmount, data *model.Data,
 }
 
 func (a *Replayer) checkFromOnce(underlying map[string]*DecAmount, token, amount string, balance *SimAccountBalance) int {
-	res := 0
+	res := FROM_TRANSFER_ERROR
 	//只能检查第一跳，没有查到的token暂时不需要查标签库
-	if flag, problem_tokens := a.checkFromToken(underlying, token, amount, balance); flag == FROM_TOKEN_AMOUNT {
+	if flag, from_addr_other_token := a.checkFromToken(underlying, token, amount, balance); flag == FROM_TOKEN_AMOUNT {
 		res = FROM_TOKEN_AMOUNT
-	} else if len(problem_tokens) != 0 {
+	} else if flag == check_fake.SAFE {
+		res = check_fake.SAFE
+	} else if len(from_addr_other_token) > 0 {
 		res = FROM_TOKEN_TYPE
 	}
 
@@ -329,8 +331,9 @@ func (a *Replayer) checkFromOnce(underlying map[string]*DecAmount, token, amount
 // 1. from转出的token与token_address收到的token是否一致
 // 2. 返回的是from转出的token中，所有有问题的token_address（amount不对或者在underlying中查不到）
 func (a *Replayer) checkFromToken(underlying map[string]*DecAmount, token, amount string, balance *SimAccountBalance) (flag int, res []string) {
-	flag = FROM_TRANSFER_ERROR // 如果from_address有转出，那么
+	flag = FROM_TOKEN_TYPE // 如果from_address有转出，那么
 	for _, asset := range balance.Assets {
+		//如果from_address的token里面有正确的token，并且是转出的，就检查amount，如果是转入的，那么一定amount有问题
 		if _, ok := underlying[asset.Address]; ok || asset.Address == token {
 			amount_str := ""
 			if asset.Amount[0] == '-' {
@@ -338,6 +341,7 @@ func (a *Replayer) checkFromToken(underlying map[string]*DecAmount, token, amoun
 				flag = check_fake.SAFE
 			} else {
 				amount_str = asset.Amount
+				flag = FROM_TOKEN_AMOUNT
 			}
 			from_addr_amount := a.GetFloatAmount(amount_str, asset.Decimals)
 			log_amount := a.GetFloatAmount(amount, asset.Decimals)
@@ -348,7 +352,9 @@ func (a *Replayer) checkFromToken(underlying map[string]*DecAmount, token, amoun
 				flag = FROM_TOKEN_AMOUNT
 			}
 		} else {
-			//如果deposit_token仍然查不到，那么返回token地址，查标签库
+			//原本的思路：如果deposit_token仍然查不到，那么返回token地址，查标签库
+			//更新：不需要对所有的deposit_token都做检查，只要能够对应到项目方收的token即可
+			//但是这里仍然返回所有的  非deposit_token，只不过上层不再做进一步处理
 			res = append(res, asset.Address)
 		}
 	}

@@ -175,7 +175,7 @@ func deleteDuplicates(chain string) {
 
 	cnt := 0
 	for _, data := range datas {
-		stmt = fmt.Sprintf("select * from anyswap where hash = '%s' and log_index = %d and tx_index = %d and id != %d", data.Hash, data.ActionId, data.Index, data.Id)
+		stmt = fmt.Sprintf("select * from anyswap where hash = '%s' and log_index = %d and tx_index = %d and id != %d", data.Hash, data.LogIndex, data.TxIndex, data.Id)
 		var dup model.Datas
 		er = d.DB().Select(&dup, stmt)
 		if er != nil {

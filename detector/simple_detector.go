@@ -49,7 +49,7 @@ func (a *SimpleOutDetector) LastDetectId() uint64 {
 func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	var n, detected = 5, 0
 	var size = len(datas) / n
-	var bar = utils.Bar(size, "")
+	var bar = utils.Bar(size, a.project)
 	var wg = &sync.WaitGroup{}
 	var limiter = make(chan bool, 10)
 	defer close(limiter)
@@ -65,6 +65,7 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 		wgResponse.Done()
 	}()
 
+	log.Info("DetectOutTx() begins")
 	for i := 0; i < len(datas); i = i + size {
 		var right = utils.Min(i+size, len(datas))
 		// 计数器+1
@@ -77,10 +78,16 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 
 	// 等待所以协程执行完毕
 	wg.Wait() // 当计数器为0时, 不再阻塞
+	log.Info("所有协程执行完毕，wg wait reday")
 	// 关闭接收结果channel
 	close(responseChannel)
 	// 等待wgResponse的计数器归零
+	log.Info("所有协程执行完毕， waiting wgResponse")
 	wgResponse.Wait()
-	bar.Close()
+
+	err := bar.Close()
+	if err != nil {
+		log.Warn("DetectOutTx(): Failed to close bar", "Error", err)
+	}
 	return detected
 }
