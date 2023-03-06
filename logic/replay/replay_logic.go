@@ -138,11 +138,6 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 // 转的就是underlying token，直接burn掉
 // 转的是wapper，溯源最终的underlying token
 
-type DecAmount struct {
-	Amount   string
-	Decimals int
-}
-
 /*func (a *Replayer) getRealToken(project, chain, token string, balanceChanges []*SimAccountBalance) map[string]*DecAmount {
 	underlying := make(map[string]*DecAmount)
 	burn_address := "0x0000000000000000000000000000000000000000"

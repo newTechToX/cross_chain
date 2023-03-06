@@ -26,7 +26,7 @@ const (
 	FAKE_CHAINID     = 2
 )
 
-func NewChecker(svc *svc.ServiceContext, chain string, config_path string) *FakeChecker {
+func NewFakeChecker(svc *svc.ServiceContext, chain string, config_path string) *FakeChecker {
 	p := svc.Providers.Get(chain)
 	if p == nil {
 		panic(fmt.Sprintf("%v: invalid provider", chain))

@@ -79,6 +79,10 @@ func (x *BigInt) Cmp(y *BigInt) int {
 	return (*big.Int)(x).Cmp((*big.Int)(y))
 }
 
+func (a *BigInt) Add(x, y *BigInt) *BigInt {
+	return (*BigInt)((*big.Int)(a).Add((*big.Int)(x), (*big.Int)(y)))
+}
+
 type BigFloat big.Float
 
 func (b *BigFloat) Value() (driver.Value, error) {

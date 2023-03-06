@@ -26,7 +26,7 @@ func init() {
 
 func TestChecker_IsFakeToken(t *testing.T) {
 	id := 16
-	a := NewChecker(srvCtx, "ethereum", "../txt_config.yaml")
+	a := NewFakeChecker(srvCtx, "ethereum", "../txt_config.yaml")
 	var data model.Datas
 	stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
 	a.svc.Dao.DB().Select(&data, stmt)

@@ -21,6 +21,11 @@ var OutTxReceiver = map[string]map[string]map[string]struct{}{
 	"across": getOutTxreceiver(across.AcrossContracts),
 }
 
+var TokenTransferDirectly = map[string]struct{}{
+	"anyswap":    struct{}{},
+	"multichain": struct{}{},
+}
+
 func getOutTxreceiver(contracts map[string][]string) map[string]map[string]struct{} {
 	ret := make(map[string]map[string]struct{}, len(contracts))
 	contracts = utils.LowerStringMap(contracts)

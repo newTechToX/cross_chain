@@ -111,3 +111,40 @@ func (a *Replayer) GetFloatAmount(Amount string, Decimals int) *model.BigFloat {
 	res := ret.Quo(ret, denominator)
 	return (*model.BigFloat)(res)
 }
+
+func (a *Replayer) ConvertBalanceChange2TokenMap(balance_change []*SimAccountBalance) map[string]map[string]*DecAmount {
+	var res = make(map[string]map[string]*DecAmount)
+	for _, account := range balance_change {
+		for _, asset := range account.Assets {
+			if _, ok := res[asset.Address]; !ok {
+				res[asset.Address] = make(map[string]*DecAmount)
+			}
+			res[asset.Address][account.Account] = &DecAmount{
+				asset.Amount, asset.Decimals,
+			}
+		}
+	}
+	return res
+}
+
+func (a *Replayer) CalTokenTotalAmount(token string, flow map[string]*DecAmount) map[string]*DecAmount {
+	var res = map[string]*DecAmount{
+		"-": &DecAmount{},
+		"+": &DecAmount{},
+	}
+	x := new(model.BigInt).SetString("0", 10)
+	y := new(model.BigInt).SetString("0", 10)
+	dec := 0
+	for _, f := range flow {
+		dec = f.Decimals
+		ff := new(model.BigInt).SetString(f.Amount, 10)
+		if f.Amount[0] == '-' {
+			x = x.Add(x, ff)
+		} else {
+			y = y.Add(y, ff)
+		}
+	}
+	res["-"] = &DecAmount{x.String(), dec}
+	res["+"] = &DecAmount{y.String(), dec}
+	return res
+}

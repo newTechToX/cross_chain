@@ -12,6 +12,11 @@ type Config struct {
 	ReplayAccessToken string `yaml:"ReplayAccessToken"`
 }
 
+type DecAmount struct {
+	Amount   string
+	Decimals int
+}
+
 type RawMsg struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`

@@ -25,7 +25,7 @@ type Logic struct {
 }
 
 func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic {
-	c := check_fake.NewChecker(svc, chain, config_path)
+	c := check_fake.NewFakeChecker(svc, chain, config_path)
 	r := replay.NewReplayer(svc, c.Aml(), config_path)
 	return &Logic{
 		svc:          svc,
