@@ -69,8 +69,8 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 		if e.Account == data.FromAddress {
 			tag.FromAddressError = a.checkFrom(real_token, data, amount, e, tx)
 			if tag.FromAddressError != check_fake.SAFE {
-				log.Warn("ReplayOutTx() from_address error:", "Project: ", table, "id: ", data.Id,
-					"Chain: ", data.Chain, "Hash: ", data.Hash)
+				//log.Warn("ReplayOutTx() from_address error:", "Project: ", table, "id: ", data.Id,
+				//"Chain: ", data.Chain, "Hash: ", data.Hash)
 			}
 			break
 		}
@@ -95,7 +95,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	if len(addresses) > 0 {
 		info, err := a.aml.QueryAml(data.Chain, addresses)
 		if err != nil {
-			log.Warn("replay.ReplayOutTxLogic(): Failed to query profit addresses", "Error ", err)
+			//log.Warn("replay.ReplayOutTxLogic(): Failed to query profit addresses", "Error ", err)
 		}
 		if info == nil {
 			for _, addr := range addresses {

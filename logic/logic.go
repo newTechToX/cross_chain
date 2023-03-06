@@ -38,7 +38,7 @@ func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic 
 // fake token 和 fake chainId
 //chainID的检查还没完成
 
-func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup, limiter chan bool, bar *progressbar.ProgressBar) {
+func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup, limiter chan bool, bar ...*progressbar.ProgressBar) {
 	if datas == nil || len(datas) == 0 {
 		return
 	}
@@ -67,14 +67,13 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 			log2.SetPrefix("CheckOutTx()")
 			utils.LogPrint(err.Error(), "../logic.log")
 		}
-		if tag.TokenProfitError != check_fake.SAFE || tag.FromAddressError == replay.FROM_TOKEN_AMOUNT ||
-			tag.ToAddressProfit != check_fake.SAFE || tag.FromAddressError == replay.FROM_TOKEN_TYPE {
+		if tag.TokenProfitError != check_fake.SAFE || tag.ToAddressProfit != check_fake.SAFE {
 			num++
 			info := fmt.Sprintf("%s out tx error: chain:%s, hash:%s, token profit: %d, from profit: %d, to profit: %d",
 				project, data.Chain, data.Hash, tag.TokenProfitError, tag.FromAddressError, tag.ToAddressProfit)
 			utils.SendMail("OUT TX ERROR DETECTED ", info)
 		}
-		bar.Add(1)
+		//bar.Add(1)
 	}
 	detected <- num
 	//bar.Add(1)

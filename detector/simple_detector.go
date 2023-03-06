@@ -49,7 +49,7 @@ func (a *SimpleOutDetector) LastDetectId() uint64 {
 func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	var n, detected = 5, 0
 	var size = len(datas) / n
-	var bar = utils.Bar(size, a.project)
+	//var bar = utils.Bar(size, a.project)
 	var wg = &sync.WaitGroup{}
 	var limiter = make(chan bool, 10)
 	defer close(limiter)
@@ -72,22 +72,20 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 		wg.Add(1)
 		limiter <- true
 		// 这里在启动goroutine时, 将用来收集结果的局部变量channel也传递进去
-		go a.logic.CheckOutTx(a.project, datas[i:right], responseChannel, wg, limiter, bar)
+		go a.logic.CheckOutTx(a.project, datas[i:right], responseChannel, wg, limiter)
 		detected += <-responseChannel
 	}
 
 	// 等待所以协程执行完毕
 	wg.Wait() // 当计数器为0时, 不再阻塞
-	log.Info("所有协程执行完毕，wg wait reday")
 	// 关闭接收结果channel
 	close(responseChannel)
 	// 等待wgResponse的计数器归零
-	log.Info("所有协程执行完毕， waiting wgResponse")
 	wgResponse.Wait()
 
-	err := bar.Close()
+	/*err := bar.Close()
 	if err != nil {
 		log.Warn("DetectOutTx(): Failed to close bar", "Error", err)
-	}
+	}*/
 	return detected
 }
