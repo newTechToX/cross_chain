@@ -17,8 +17,8 @@ type InChecker struct {
 }
 
 type Tags struct {
-	ToAddressProfit      int
-	ProjectTransferError int
+	ToAddressProfit  int
+	TokenProfitError int
 }
 
 const (
@@ -69,22 +69,40 @@ func (a *InChecker) ReplayInTxLogic(project string, data *model.Data) (tag Tags,
 	amount := data.Amount.String()
 	if _, ok := crosschain.TokenTransferDirectly[project]; !ok {
 		//如果不是token地址直接执行转账的项目，首先转换成map
-		tag.ProjectTransferError = a.checkProjectToken(project, data.Chain, data.Token, amount, tx.BalanceChanges)
+		tag.TokenProfitError = a.checkProjectToken(project, data.Chain, data.Token, amount, tx.BalanceChanges)
 	} else {
 
 	}
 	//如果数量不对，那么可能是因为一笔tx里面多笔in
-	if tag.ProjectTransferError == PROJECT_TRANSFER_MORE || tag.ProjectTransferError == PROJECT_TRANSFER_MINUS {
+	if tag.TokenProfitError == PROJECT_TRANSFER_MORE || tag.TokenProfitError == PROJECT_TRANSFER_MINUS {
 		var txs model.Datas
-		stmt := fmt.Sprintf("select %s from %s where hash='%s' and log_index!=%d")
+		stmt := fmt.Sprintf("select %s from %s where hash='%s' and log_index!=%d", model.ResultRows, project, data.Hash, data.LogIndex)
 		if err := a.dao.DB().Select(&txs, stmt); err != nil {
 			log.Error("ReplayInTxLogic() ", "err", err)
 		}
 		if len(txs) != 0 {
-			asset_map := a.replayer.ConvertBalanceChange2TokenMap(tx.BalanceChanges)
-			n := a.replayer.CalTokenTotalAmount(data.Token, asset_map[data.Token])
-		}
+			for _, tx := range txs {
+				if tx.TokenProfitError.Int64 == SAFE {
+					//如果之前已经检查过同一笔hash里面的data，直接更新为SAFE即可
+					tag.TokenProfitError = SAFE
+					break
+				}
+			}
 
+			//说明该tx没有检查过
+			if tag.TokenProfitError != SAFE {
+				asset_map := a.replayer.ConvertBalanceChange2TokenMap(tx.BalanceChanges)
+				total_amount_ := a.replayer.CalTokenTotalAmount(data.Token, asset_map[data.Token])
+				total_amount := new(model.BigInt).SetString(total_amount_["-"].Amount, 10)
+				n := new(model.BigInt).SetString("0", 10)
+				for _, tx := range txs {
+					n = n.Add(n, tx.Amount)
+				}
+				if total_amount.Cmp(n) == 0 {
+					tag.TokenProfitError = SAFE
+				}
+			}
+		}
 	}
 
 	return
