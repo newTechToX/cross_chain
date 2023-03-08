@@ -51,8 +51,8 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	var size = len(datas) / n
 	//var bar = utils.Bar(size, a.project)
 	var wg = &sync.WaitGroup{}
-	var limiter = make(chan bool, 10)
-	defer close(limiter)
+	//var limiter = make(chan bool, 10)
+	//defer close(limiter)
 
 	responseChannel := make(chan int, size)
 	// 为读取结果控制器创建新的WaitGroup, 需要保证控制器内的所有值都已经正确处理完毕, 才能结束
@@ -70,18 +70,20 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 		var right = utils.Min(i+size, len(datas))
 		// 计数器+1
 		wg.Add(1)
-		limiter <- true
+		//limiter <- true
 		// 这里在启动goroutine时, 将用来收集结果的局部变量channel也传递进去
-		go a.logic.CheckOutTx(a.project, datas[i:right], responseChannel, wg, limiter)
+		go a.logic.CheckOutTx(a.project, datas[i:right], responseChannel, wg) //, limiter)
 		detected += <-responseChannel
 	}
 
 	// 等待所以协程执行完毕
 	wg.Wait() // 当计数器为0时, 不再阻塞
+	log.Info("wg.Wait() ends")
 	// 关闭接收结果channel
 	close(responseChannel)
 	// 等待wgResponse的计数器归零
 	wgResponse.Wait()
+	log.Info("wgResponse.Wait() ends")
 
 	/*err := bar.Close()
 	if err != nil {

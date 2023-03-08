@@ -10,7 +10,6 @@ import (
 	"app/utils"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/schollz/progressbar/v3"
 	log2 "log"
 
 	"sync"
@@ -38,12 +37,13 @@ func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic 
 // fake token 和 fake chainId
 //chainID的检查还没完成
 
-func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup, limiter chan bool, bar ...*progressbar.ProgressBar) {
+func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup) { //limiter chan bool, bar ...*progressbar.ProgressBar) {
 	if datas == nil || len(datas) == 0 {
 		return
 	}
 	defer wg.Done()
 	var num = 0
+	log.Info("logic.CheckOutTx() begins")
 	for _, data := range datas {
 		//先检查fakeToken的情况
 		if isfake := a.fake_checker.IsFakeToken(project, data); isfake != check_fake.SAFE {
@@ -77,7 +77,7 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 	}
 	detected <- num
 	//bar.Add(1)
-	<-limiter
+	//<-limiter
 	return
 }
 
