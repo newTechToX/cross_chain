@@ -18,6 +18,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+var Name = flag.String("name", "", "input project name")
+var From = flag.Uint64("from", uint64(1547700), "input from blocknumber")
+var To = flag.Uint64("to", uint64(1547700), "input to blocknumber")
+
 func main() {
 	var logLvl = flag.String("log_level", "info", "set log level")
 	var batchSize = flag.Int("batch_size", 1000, "set fetch batch size")
@@ -34,9 +38,6 @@ func main() {
 		fmt.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", *pprofPort), nil))
 	}()
 	fmt.Println("log level:", lvl.String(), "\nbatch size:", *batchSize, "\npprof port:", *pprofPort, "\nchainbase rate:", *chainbaseRate)
-	// log.Root().SetHandler(log.LvlFilterHandler(
-	// 	lvl, log.StreamHandler(os.Stderr, log.TerminalFormat(false)),
-	// ))
 	log.Root().SetHandler(log.MultiHandler(
 		log.LvlFilterHandler(log.LvlError, log.Must.FileHandler("./error.log", log.TerminalFormat(false))),
 		log.LvlFilterHandler(lvl, log.StreamHandler(os.Stderr, log.TerminalFormat(true))),
