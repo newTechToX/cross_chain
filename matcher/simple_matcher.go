@@ -31,7 +31,7 @@ func NewSimpleInMatcher(project string, dao *dao.Dao, start_id uint64) *SimpleIn
 }
 
 func (a *SimpleInMatcher) LastUnmatchId() uint64 {
-	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in (1, 10, 56, 137, 250, 42161, 43114)", a.project, a.start_id)
+	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in (1, 10, 56, 137, 250, 288, 42161, 43114)", a.project, a.start_id)
 	type ID struct {
 		Id uint64 `db:"min"`
 	}
