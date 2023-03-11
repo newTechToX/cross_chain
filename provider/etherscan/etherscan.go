@@ -20,8 +20,8 @@ const (
 
 	normalTxApi      = "%s/api?module=account&action=txlist&address=%s&startblock=%d&endblock=%d&page=%d&offset=%d&sort=%s&apikey=%s"
 	internalTxApi    = "%s/api?module=account&action=txlistinternal&address=%s&startblock=%d&endblock=%d&page=%d&offset=%d&sort=%s&apikey=%s"
-	logWithTopicsApi = "%s/api?module=logs&action=getLogs&address=%s&fromBlock=%d&toBlock=%d&topic0=%s&page=%d&offset=%d&apikey=%s"
-	logApi           = "%s/api?module=logs&action=getLogs&address=%s&fromBlock=%d&toBlock=%d&page=%d&offset=%d&apikey=%s"
+	logWithTopicsApi = "%s/api?module=logs&action=getLogs&fromBlock=%d&toBlock=%d&topic0=%s&page=%d&offset=%d&apikey=%s"
+	logApi           = "%s/api?module=logs&action=getLogs&fromBlock=%d&toBlock=%d&page=%d&offset=%d&apikey=%s"
 
 	latestNumApi = "%s/api?module=proxy&action=eth_blockNumber&apiKey=%s"
 
@@ -68,44 +68,43 @@ func (p *EtherscanProvider) LatestNumber() (uint64, error) {
 	return utils.ParseStrToUint64(resp.Result), nil
 }
 
-func (p *EtherscanProvider) GetLogs(addresses []string, topics0 []string, from, to uint64) (model.Events, error) {
+func (p *EtherscanProvider) GetLogs(topics0 []string, from, to uint64) (model.Events, error) {
 	ret := make(model.Events, 0)
-	for _, address := range addresses {
-		for _, topic0 := range topics0 {
-			page := 1
-			for {
-				if page*DefaultPageSize > utils.EtherScanMaxResult {
-					return nil, utils.ErrTooManyRecords
-				}
-				rawLogs, err := p.getLogs(address, topic0, Option{
-					Page:       page,
-					PageSize:   DefaultPageSize,
-					StartBlock: int64(from),
-					EndBlock:   int64(to),
-				})
-				if err != nil {
-					return nil, err
-				}
-				for _, l := range rawLogs {
-					log := model.Event{
-						Ts:      time.Unix(int64(utils.ParseStrToUint64(l.Timestamp)), 0),
-						Number:  utils.ParseStrToUint64(l.BlockNumber),
-						Index:   utils.ParseStrToUint64(l.Index),
-						Hash:    l.Hash,
-						Id:      utils.ParseStrToUint64(l.LogIndex),
-						Address: l.Address,
-						Topics:  l.Topics,
-						Data:    l.Data,
-					}
-					ret = append(ret, &log)
-				}
-				if len(rawLogs) < DefaultPageSize {
-					break
-				}
-				page++
+	for _, topic0 := range topics0 {
+		page := 1
+		for {
+			if page*DefaultPageSize > utils.EtherScanMaxResult {
+				return nil, utils.ErrTooManyRecords
 			}
+			rawLogs, err := p.getLogs(topic0, Option{
+				Page:       page,
+				PageSize:   DefaultPageSize,
+				StartBlock: int64(from),
+				EndBlock:   int64(to),
+			})
+			if err != nil {
+				return nil, err
+			}
+			for _, l := range rawLogs {
+				log := model.Event{
+					Ts:      time.Unix(int64(utils.ParseStrToUint64(l.Timestamp)), 0),
+					Number:  utils.ParseStrToUint64(l.BlockNumber),
+					Index:   utils.ParseStrToUint64(l.Index),
+					Hash:    l.Hash,
+					Id:      utils.ParseStrToUint64(l.LogIndex),
+					Address: l.Address,
+					Topics:  l.Topics,
+					Data:    l.Data,
+				}
+				ret = append(ret, &log)
+			}
+			if len(rawLogs) < DefaultPageSize {
+				break
+			}
+			page++
 		}
 	}
+
 	return ret, nil
 }
 
@@ -332,12 +331,12 @@ func (p *EtherscanProvider) GetInternalTransactions(address string, o Option) ([
 	return ret, err
 }
 
-func (p *EtherscanProvider) getLogs(address, topics0 string, o Option) ([]*EtherscanEvent, error) {
+func (p *EtherscanProvider) getLogs(topics0 string, o Option) ([]*EtherscanEvent, error) {
 	p.limiter.Wait(context.Background())
 	k := p.nextKey()
-	url := fmt.Sprintf(logWithTopicsApi, p.baseUrl, strings.ToLower(address), o.StartBlock, o.EndBlock, topics0, o.Page, o.PageSize, k)
+	url := fmt.Sprintf(logWithTopicsApi, p.baseUrl, o.StartBlock, o.EndBlock, topics0, o.Page, o.PageSize, k)
 	if topics0 == "" {
-		url = fmt.Sprintf(logApi, p.baseUrl, strings.ToLower(address), o.StartBlock, o.EndBlock, o.Page, o.PageSize, k)
+		url = fmt.Sprintf(logApi, p.baseUrl, o.StartBlock, o.EndBlock, o.Page, o.PageSize, k)
 	}
 	ret, err := doFetchData[[]*EtherscanEvent](url, p.proxy)
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "invalid api key") {

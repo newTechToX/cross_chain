@@ -276,3 +276,31 @@ func TestSqlNULLint(t *testing.T) {
 		println("pk")
 	}
 }
+
+type Sli []int
+
+func TestSlice(t *testing.T) {
+	var c = Sli{
+		1, 2, 3, 4, 5,
+	}
+	c = deleteSlice(c, []int{1, 2, 6, 5})
+	fmt.Println(c)
+}
+
+func deleteSlice(a Sli, ids []int) Sli {
+	k := -1
+	b := []int{}
+	for i, id := range ids {
+		for j := 0; j < len(a); j++ {
+			aa := a[j]
+			if id == aa {
+				b = append(b, ids[k+1:i]...)
+				k = i
+				fmt.Println(b)
+				break
+			}
+		}
+	}
+	b = append(b, ids[k+1:]...)
+	return b
+}

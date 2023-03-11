@@ -50,17 +50,17 @@ func (p *Provider) LatestNumber() (uint64, error) {
 	return val - 128, nil
 }
 
-func (p *Provider) GetLogs(addresses []string, topics0 []string, from, to uint64) (model.Events, error) {
+func (p *Provider) GetLogs(topics0 []string, from, to uint64) (model.Events, error) {
 	// return p.geth.GetLogs(addresses, topics0, from, to)
 	// must load from chainbase
-	return p.scan.GetLogs(addresses, topics0, from, to)
+	return p.scan.GetLogs(topics0, from, to)
 	// if p.chainbase == nil {
 	// 	return nil, nil
 	// }
 	// return p.chainbase.GetLogs(addresses, topics0, from, to)
 }
 
-func (p *Provider) GetCalls(addresses, selectors []string, from, to uint64) ([]*model.Call, error) {
+func (p *Provider) GetCalls(addresses []string, selectors []string, from, to uint64) ([]*model.Call, error) {
 	// return p.scan.GetCalls(addresses, selectors, from, to)
 	if p.chainbase == nil {
 		return nil, nil

@@ -5,6 +5,8 @@ import (
 	"app/svc"
 	"app/utils"
 	"fmt"
+	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -136,9 +138,9 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 
 func (m *Matcher) ProcessUnmatch(from, to uint64, project string, unmatches_map map[uint64]int) error {
 	//先查出unmatch in
-	stmt := fmt.Sprintf("select %s from %s where direction = 'in' and id >= $1 and id <= $2 and match_id is null")
+	stmt := fmt.Sprintf("select %s from %s where direction = 'in' and id >= $1 and id <= $2 and match_id is null", model.ResultRows, project)
 	var unmatches model.Datas
-	err := m.svc.Dao.DB().Select(&unmatches, stmt)
+	err := m.svc.Dao.DB().Select(&unmatches, stmt, from, to)
 	if err != nil {
 		return err
 	}
@@ -169,7 +171,15 @@ func (m *Matcher) ProcessUnmatch(from, to uint64, project string, unmatches_map 
 			return err
 		}
 		for _, b := range blocks {
-
+			from_block := strconv.FormatUint(b.MIN, 10)
+			to_block := strconv.FormatUint(b.MAX, 10)
+			cmd := exec.Command("./../collector/pro", "-name", "anyswap", "-from", from_block, "-to", to_block)
+			data, err := cmd.Output()
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(string(data))
 		}
 	}
+	return err
 }

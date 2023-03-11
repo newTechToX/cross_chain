@@ -68,16 +68,16 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	//var limiter = make(chan bool, 10)
 	//defer close(limiter)
 
-	responseChannel := make(chan int, n)
+	responseChannel := make(chan int, n+1)
 	// 为读取结果控制器创建新的WaitGroup, 需要保证控制器内的所有值都已经正确处理完毕, 才能结束
-	wgResponse := &sync.WaitGroup{}
+	/*wgResponse := &sync.WaitGroup{}
 	// 启动读取结果的控制器
 	go func() {
 		// wgResponse计数器+1
 		wgResponse.Add(1)
 		// 当 responseChannel被关闭时且channel中所有的值都已经被处理完毕后, 将执行到这一行
 		wgResponse.Done()
-	}()
+	}()*/
 
 	log.Info("DetectOutTx() begins")
 	for i := 0; i < len(datas); i = i + size {
@@ -95,7 +95,7 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	// 关闭接收结果channel
 	close(responseChannel)
 	// 等待wgResponse的计数器归零
-	wgResponse.Wait()
+	//wgResponse.Wait()
 
 	/*err := bar.Close()
 	if err != nil {

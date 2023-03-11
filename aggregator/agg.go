@@ -105,14 +105,11 @@ func (a *Aggregator) DoJob(c model.Colletcor) {
 func (a *Aggregator) Work(c model.Colletcor, from, to uint64) (int, error) {
 	var totalFetched int
 	var results model.Datas
-	addrs := c.Contracts(a.chain)
-	if len(addrs) == 0 {
-		return 0, nil
-	}
+
 	switch v := c.(type) {
 	case model.EventCollector:
 		topics0 := v.Topics0(a.chain)
-		events, err := a.provider.GetLogs(addrs, topics0, from, to)
+		events, err := a.provider.GetLogs(topics0, from, to)
 		if err != nil {
 			return 0, err
 		}
@@ -120,6 +117,10 @@ func (a *Aggregator) Work(c model.Colletcor, from, to uint64) (int, error) {
 		sort.Sort(events)
 		results = v.Extract(a.chain, events)
 	case model.MsgCollector:
+		addrs := c.Contracts(a.chain)
+		if len(addrs) == 0 {
+			return 0, nil
+		}
 		selectors := v.Selectors(a.chain)
 		calls, err := a.provider.GetCalls(addrs, selectors, from, to)
 		if err != nil {
