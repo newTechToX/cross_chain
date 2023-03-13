@@ -61,3 +61,15 @@ func TestSimpleInMatcher_Match(t *testing.T) {
 	a := NewSimpleInMatcher("anyswap", srvCtx.ProjectsDao, uint64(id))
 	a.Match(data)
 }
+
+func TestSup(t *testing.T) {
+	if _, ok := SupportedChainIds["anyswap"]["3"]; ok {
+		println("any")
+	}
+	if _, ok := SupportedChainIds["across"]["1"]; ok {
+		println("ac")
+	}
+	if _, ok := SupportedChainIds["anyswap"]["1"]; ok {
+		println("ay")
+	}
+}

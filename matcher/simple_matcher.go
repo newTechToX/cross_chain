@@ -61,6 +61,10 @@ func (a *SimpleInMatcher) Project() string {
 
 func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Datas, err error) {
 	for _, crossIn := range crossIns {
+		from_id := crossIn.FromChainId.String()
+		if _, ok := SupportedChainIds[a.project][from_id]; !ok {
+			continue
+		}
 		if crossIn.Direction != model.InDirection {
 			log.Warn("matching should not input cross-out")
 			continue
