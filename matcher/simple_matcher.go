@@ -8,25 +8,30 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
+	"os"
+	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
 type SimpleInMatcher struct {
-	project  string
-	dao      *dao.Dao
-	start_id uint64
+	project       string
+	dao           *dao.Dao
+	start_id      uint64
+	unmatches_map map[uint64]int
 }
 
 var _ model.Matcher = &SimpleInMatcher{}
 
 func NewSimpleInMatcher(project string, dao *dao.Dao, start_id uint64) *SimpleInMatcher {
 	return &SimpleInMatcher{
-		project:  project,
-		dao:      dao,
-		start_id: start_id,
+		project:       project,
+		dao:           dao,
+		start_id:      start_id,
+		unmatches_map: make(map[uint64]int),
 	}
 }
 
@@ -76,6 +81,11 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 			return nil, err
 		}
 		if len(pending) == 0 {
+			if a.unmatches_map[crossIn.Id] > 4 {
+				a.SendMail("UNMATCH", model.Datas{crossIn})
+			} else {
+				err = a.processUnmatch(crossIn)
+			}
 			continue
 		}
 		// if len(pending) > 1 {
@@ -86,6 +96,11 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
+				if a.unmatches_map[crossIn.Id] > 4 {
+					a.SendMail("UNMATCH", model.Datas{crossIn})
+				} else {
+					err = a.processUnmatch(crossIn)
+				}
 				continue
 			}
 
@@ -145,6 +160,9 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		if len(valid) >= 1 {
 			shouldUpdates = append(shouldUpdates, crossIn)
 			shouldUpdates = append(shouldUpdates, valid...)
+			if _, ok := a.unmatches_map[crossIn.Id]; ok {
+				delete(a.unmatches_map, crossIn.Id)
+			}
 		}
 	}
 	return
@@ -256,3 +274,88 @@ func isDuplicated(b, c *model.Data) bool {
 	}
 	return false
 }
+
+func (m *SimpleInMatcher) processUnmatch(unmatch *model.Data) error {
+	m.unmatches_map[unmatch.Id] += 1
+	if m.unmatches_map[unmatch.Id] <= 3 {
+		return nil
+	}
+
+	type Blocks struct {
+		MAX   uint64 `db:"max"`
+		MIN   uint64 `db:"min"`
+		Chain string `db:"chain"`
+	}
+
+	var stmt string
+	if unmatch.FromChainId.String() != "" || unmatch.FromChainId.String() != "0" {
+		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' and from_chain = %s group by chain", m.project, unmatch.FromChainId.String())
+	} else {
+		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' group by chain", m.project)
+	}
+	var blocks = []*Blocks{}
+	err := m.dao.DB().Select(&blocks, stmt, unmatch.Id-2000, unmatch.Id+150)
+	if err != nil {
+		return err
+	}
+	for _, b := range blocks {
+		from_block := strconv.FormatUint(b.MIN, 10)
+		to_block := strconv.FormatUint(b.MAX, 10)
+		cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+/*func (m *SimpleInMatcher) processUnmatch(from, to uint64, project string, unmatches_map map[uint64]int) error {
+	//先查出unmatch in
+	stmt := fmt.Sprintf("select %s from %s where direction = 'in' and id >= $1 and id <= $2 and match_id is null", model.ResultRows, project)
+	var unmatches model.Datas
+	err := m.dao.DB().Select(&unmatches, stmt, from, to)
+	if err != nil {
+		return err
+	}
+	if len(unmatches) == 0 {
+		return nil
+	}
+	for _, unmatch := range unmatches {
+		if _, ok := unmatches_map[unmatch.Id]; !ok {
+			//如果第一次unmatch，就先记录下来
+			unmatches_map[unmatch.Id] = 1
+			continue
+		}
+		if unmatches_map[unmatch.Id] <= 3 {
+			unmatches_map[unmatch.Id] += 1
+			continue
+		}
+
+		type Blocks struct {
+			MAX   uint64 `db:"max"`
+			MIN   uint64 `db:"min"`
+			Chain string `db:"chain"`
+		}
+
+		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' and from_chain != $3 group by chain", project)
+		var blocks = []*Blocks{}
+		err := m.dao.DB().Select(&blocks, stmt)
+		if err != nil {
+			return err
+		}
+		for _, b := range blocks {
+			from_block := strconv.FormatUint(b.MIN, 10)
+			to_block := strconv.FormatUint(b.MAX, 10)
+			cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
+			data, err := cmd.Output()
+			if err != nil {
+				panic(err)
+			}
+			fmt.Println(string(data))
+		}
+	}
+	return err
+}*/

@@ -5,8 +5,6 @@ import (
 	"app/svc"
 	"app/utils"
 	"fmt"
-	"os/exec"
-	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -134,52 +132,4 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	matched = len(shouldUpdates) / 2
 	total = len(results)
 	return
-}
-
-func (m *Matcher) ProcessUnmatch(from, to uint64, project string, unmatches_map map[uint64]int) error {
-	//先查出unmatch in
-	stmt := fmt.Sprintf("select %s from %s where direction = 'in' and id >= $1 and id <= $2 and match_id is null", model.ResultRows, project)
-	var unmatches model.Datas
-	err := m.svc.Dao.DB().Select(&unmatches, stmt, from, to)
-	if err != nil {
-		return err
-	}
-	if len(unmatches) == 0 {
-		return nil
-	}
-	for _, unmatch := range unmatches {
-		if _, ok := unmatches_map[unmatch.Id]; !ok {
-			//如果第一次unmatch，就先记录下来
-			unmatches_map[unmatch.Id] = 1
-			continue
-		}
-		if unmatches_map[unmatch.Id] <= 3 {
-			unmatches_map[unmatch.Id] += 1
-			continue
-		}
-
-		type Blocks struct {
-			MAX   uint64 `db:"max"`
-			MIN   uint64 `db:"min"`
-			Chain string `db:"chain"`
-		}
-
-		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' and from_chain != $3 group by chain", project)
-		var blocks = []*Blocks{}
-		err := m.svc.Dao.DB().Select(&blocks, stmt)
-		if err != nil {
-			return err
-		}
-		for _, b := range blocks {
-			from_block := strconv.FormatUint(b.MIN, 10)
-			to_block := strconv.FormatUint(b.MAX, 10)
-			cmd := exec.Command("./../collector/pro", "-name", "anyswap", "-from", from_block, "-to", to_block)
-			data, err := cmd.Output()
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println(string(data))
-		}
-	}
-	return err
 }

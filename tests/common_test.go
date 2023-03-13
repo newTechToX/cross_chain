@@ -304,3 +304,16 @@ func deleteSlice(a Sli, ids []int) Sli {
 	b = append(b, ids[k+1:]...)
 	return b
 }
+
+func TestMap(t *testing.T) {
+	a := map[int]int{
+		1: 2, 4: 3,
+	}
+	a[5] = 6
+	if a[7] > 4 {
+		println("1")
+	} else {
+		a[7] += 1
+	}
+	println(a[7])
+}

@@ -21,8 +21,8 @@ const (
 
 var (
 	resultInsertFieldNames = builder.RawFieldNames(&model.Data{}, true)
-	resultInsertRows       = strings.Join(stringx.Remove(resultInsertFieldNames, "id", "match_id"), ",")
-	resultInsertTags       = strings.Join(slicesWithPrefix(stringx.Remove(resultInsertFieldNames, "id", "match_id"), ":"), ",")
+	resultInsertRows       = strings.Join(stringx.Remove(resultInsertFieldNames, "id", "match_id", "profit", "from_address_error", "to_address_profit", "token_profit_error", "isfaketoken"), ",")
+	resultInsertTags       = strings.Join(slicesWithPrefix(stringx.Remove(resultInsertFieldNames, "id", "match_id", "profit", "from_address_error", "to_address_profit", "token_profit_error", "isfaketoken"), ":"), ",")
 
 	resultUpdateFieldNames = []string{"match_id", "from_chain", "from_address", "to_chain", "to_address"}
 	resultUpdateRows       = strings.Join(resultUpdateFieldNames, ",")
@@ -103,7 +103,7 @@ func (d *Dao) GetContractInfos(project string) (model.ContractInfos, error) {
 	return res, nil
 }
 
-func (d *Dao) Save(results model.Datas) (err error) {
+func (d *Dao) Save(results model.Datas, table ...string) (err error) {
 	tx, err := d.db.Beginx()
 	if err != nil {
 		return
@@ -124,7 +124,7 @@ func (d *Dao) Save(results model.Datas) (err error) {
 	maxInsert := SQL_MAX_PLACEHOLDERS / 17
 	for i := 0; i < len(results); i += maxInsert {
 		batch := results[i:utils.Min(i+maxInsert, len(results))]
-		err = d.save(tx, batch)
+		err = d.save(tx, batch, table...)
 		if err != nil {
 			return
 		}
@@ -132,11 +132,15 @@ func (d *Dao) Save(results model.Datas) (err error) {
 	return nil
 }
 
-func (d *Dao) save(tx *sqlx.Tx, results model.Datas) error {
+func (d *Dao) save(tx *sqlx.Tx, results model.Datas, table ...string) error {
+	if len(table) > 0 {
+		d.table = table[0]
+	}
 	if len(results) == 0 {
 		return nil
 	}
 	stmt := fmt.Sprintf("insert into %s (%s) values (%s)", d.table, resultInsertRows, resultInsertTags)
+	fmt.Println(stmt)
 	_, err := tx.NamedExec(stmt, results)
 	return err
 }

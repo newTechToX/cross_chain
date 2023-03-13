@@ -97,6 +97,9 @@ func (p *EtherscanProvider) GetLogs(topics0 []string, from, to uint64) (model.Ev
 					Data:    l.Data,
 				}
 				ret = append(ret, &log)
+				if log.Number == uint64(16786623) {
+					println(log.Hash)
+				}
 			}
 			if len(rawLogs) < DefaultPageSize {
 				break
