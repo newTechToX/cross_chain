@@ -70,6 +70,7 @@ func (a *Aggregator) WorkPro(c model.Colletcor, from, to uint64) (int, error) {
 	var totalFetched int
 	var results model.Datas
 	addrs := c.Contracts(a.chain)
+
 	if len(addrs) == 0 {
 		return 0, nil
 	}
