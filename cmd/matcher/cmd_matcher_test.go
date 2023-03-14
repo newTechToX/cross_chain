@@ -11,12 +11,13 @@ func TestCmd(t *testing.T) {
 	to_block := "16786790"
 
 	cmd := exec.Command("../../bin/pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", "eth")
-	/*cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr*/
-	err := cmd.Run()
-	data, err := cmd.Output()
+
+	dd, err := cmd.Output()
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(string(data))
+	if string(dd) == "" {
+		println("nil")
+	}
+	fmt.Println(string(dd))
 }

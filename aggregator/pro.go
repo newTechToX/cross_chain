@@ -33,7 +33,7 @@ func (a *Aggregator) DoJobPro(c model.Colletcor, from, to uint64) {
 
 	last := from
 	latest := to
-	log.Info("start collector_pro", "chain", a.chain, "project", c.Name(), "last commit", last)
+	//log.Info("start collector_pro", "chain", a.chain, "project", c.Name(), "last commit", last)
 	batchSize := BatchSize
 
 	for last < latest {
@@ -59,10 +59,11 @@ func (a *Aggregator) DoJobPro(c model.Colletcor, from, to uint64) {
 				log.Error("job failed", "chain", a.chain, "project", c.Name(), "from", last+1, "to", right, "err", err)
 			}
 		} else if fetched > 0 {
+			fmt.Println(fetched)
 			return
 		} else {
 			last = right
-			log.Info("collect done", "chain", a.chain, "project", c.Name(), "current number", last, "batch size", batchSize)
+			//log.Info("collect done", "chain", a.chain, "project", c.Name(), "current number", last, "batch size", batchSize)
 			if fetched < utils.EtherScanMaxResult*0.8 && batchSize <= 10*utils.EtherScanMaxResult {
 				batchSize += 100
 			}
@@ -108,15 +109,13 @@ func (a *Aggregator) WorkPro(c model.Colletcor, from, to uint64) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("result save failed: %v", err)
 	}
+	//println(len(results))
 	return totalFetched, nil
 }
 
 func (a *Aggregator) filterEvents(project string, events model.Events) model.Events {
 	var b model.Events
 	for _, event := range events {
-		if event.Hash == "0xb649db13ea04665c17ab87d11ac743263eb3bb790c763770bd64a5d78850987c" {
-			println(event.Hash)
-		}
 		if !a.exsit(project, event.Hash, event.Id) {
 			b = append(b, event)
 			break

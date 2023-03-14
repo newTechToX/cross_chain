@@ -406,8 +406,11 @@ func (a *Replayer) checkTokenProfit(realToken map[string]*DecAmount, amount *mod
 			continue
 		}
 
-		xx := new(model.BigInt).SetString(value.Amount, 10)
-		if xx.Cmp(amount) < 0 {
+		recieved_amount := a.GetFloatAmount(value.Amount, value.Decimals)
+		log_amount := a.GetFloatAmount(value.Amount, value.Decimals)
+		fee := log_amount.Mul(0.1)
+		diff := new(model.BigFloat).Sub(log_amount, recieved_amount)
+		if diff.Cmp(fee) > 0 {
 			return TOKEN_PROFIT_MINUS_AMOUNT
 		}
 

@@ -7,7 +7,6 @@ import (
 	"app/svc"
 	"context"
 	"flag"
-	"fmt"
 	_ "net/http/pprof"
 	"os"
 
@@ -22,7 +21,7 @@ var Chain = flag.String("chain", "", "input chain")
 func main() {
 	var logLvl = flag.String("log_level", "info", "set log level")
 	var batchSize = flag.Int("batch_size", 1000, "set fetch batch size")
-	var pprofPort = flag.String("pprof", "6060", "set pprof port")
+	//var pprofPort = flag.String("pprof", "6060", "set pprof port")
 	var chainbaseRate = flag.Int("chainbase_limit", 20, "setup chainbase query rate (in Second)")
 
 	flag.Parse()
@@ -32,7 +31,7 @@ func main() {
 	}
 	aggregator.BatchSize = uint64(*batchSize)
 
-	fmt.Println("log level:", lvl.String(), "\nbatch size:", *batchSize, "\npprof port:", *pprofPort, "\nchainbase rate:", *chainbaseRate)
+	//fmt.Println("log level:", lvl.String(), "\nbatch size:", *batchSize, "\npprof port:", *pprofPort, "\nchainbase rate:", *chainbaseRate)
 	log.Root().SetHandler(log.MultiHandler(
 		log.LvlFilterHandler(log.LvlError, log.Must.FileHandler("./error.log", log.TerminalFormat(false))),
 		log.LvlFilterHandler(lvl, log.StreamHandler(os.Stderr, log.TerminalFormat(true))),

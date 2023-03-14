@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
-	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -21,7 +20,7 @@ type SimpleInMatcher struct {
 	project       string
 	dao           *dao.Dao
 	start_id      uint64
-	unmatches_map map[uint64]int
+	unmatches_map map[uint64]struct{}
 }
 
 var _ model.Matcher = &SimpleInMatcher{}
@@ -31,7 +30,7 @@ func NewSimpleInMatcher(project string, dao *dao.Dao, start_id uint64) *SimpleIn
 		project:       project,
 		dao:           dao,
 		start_id:      start_id,
-		unmatches_map: make(map[uint64]int),
+		unmatches_map: make(map[uint64]struct{}),
 	}
 }
 
@@ -85,25 +84,33 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 			return nil, err
 		}
 		if len(pending) == 0 {
-			if a.unmatches_map[crossIn.Id] > 4 {
+			var fetched = 1
+			_, ok := a.unmatches_map[crossIn.Id]
+			if !ok && crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
+				//说明还没有拉过数据
+				fetched = a.processUnmatch(crossIn)
+			}
+			if ok || fetched == 0 {
+				//没有拉取到数据或者已经拉过了
 				a.SendMail("UNMATCH", model.Datas{crossIn})
-			} else {
-				err = a.processUnmatch(crossIn)
 			}
 			continue
 		}
-		// if len(pending) > 1 {
-		// 	log.Error("multi matched", "src", crossIn.Hash)
-		// }
+
 		valid_ := make(model.Datas, 0)
 		multi := 0
 		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
-				if a.unmatches_map[crossIn.Id] > 4 {
+				var fetched = 1
+				_, ok := a.unmatches_map[crossIn.Id]
+				if !ok && crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
+					//说明还没有拉过数据
+					fetched = a.processUnmatch(crossIn)
+				}
+				if ok || fetched == 0 {
+					//没有拉取到数据或者已经拉过了
 					a.SendMail("UNMATCH", model.Datas{crossIn})
-				} else {
-					err = a.processUnmatch(crossIn)
 				}
 				continue
 			}
@@ -279,11 +286,8 @@ func isDuplicated(b, c *model.Data) bool {
 	return false
 }
 
-func (m *SimpleInMatcher) processUnmatch(unmatch *model.Data) error {
-	m.unmatches_map[unmatch.Id] += 1
-	if m.unmatches_map[unmatch.Id] <= 3 {
-		return nil
-	}
+func (m *SimpleInMatcher) processUnmatch(unmatch *model.Data) int {
+	m.unmatches_map[unmatch.Id] = struct{}{}
 
 	type Blocks struct {
 		MAX   uint64 `db:"max"`
@@ -300,20 +304,19 @@ func (m *SimpleInMatcher) processUnmatch(unmatch *model.Data) error {
 	var blocks = []*Blocks{}
 	err := m.dao.DB().Select(&blocks, stmt, unmatch.Id-2000, unmatch.Id+150)
 	if err != nil {
-		return err
+		return 0
 	}
 	for _, b := range blocks {
 		from_block := strconv.FormatUint(b.MIN, 10)
 		to_block := strconv.FormatUint(b.MAX, 10)
 		cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
-		if err != nil {
-			return err
+		dd, _ := cmd.Output()
+		if string(dd) != "" {
+			fetched, _ := strconv.Atoi(string(dd))
+			return fetched
 		}
 	}
-	return err
+	return 0
 }
 
 /*func (m *SimpleInMatcher) processUnmatch(from, to uint64, project string, unmatches_map map[uint64]int) error {
