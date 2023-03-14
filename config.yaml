@@ -3,7 +3,7 @@ Database:
   AddressLabelSource: postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/address_labels?sslmode=disable
   AnyswapSource_: 	postgres://yufeng:yufengblockSec888@192.168.3.155:8888/cross_chain?sslmode=disable
   AnyswapSource: 	postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable
-Proxy_: http://192.168.3.59:10809
+Proxy_: http://192.168.2.63:10809
 Proxy: http://127.0.0.1:7890
 ChainbaseApiKey: 2FtLTBTxc9h7CX3YwBeEkrMlnhc
 EtherscanRateLimit: 20
