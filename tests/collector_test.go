@@ -44,7 +44,7 @@ func TestAnyswap(t *testing.T) {
 
 	p := srvCtx.Providers.Get("fantom")
 
-	calls, err := p.GetLogs(addrs, topics0, 35860281, 35860281)
+	calls, err := p.GetLogs(topics0, 35860281, 35860281)
 	if err != nil {
 		return
 	}
@@ -63,7 +63,6 @@ func TestCBridge(t *testing.T) {
 	fmt.Println(c.Name())
 	p := srvCtx.Providers.Get("eth")
 	es, err := p.GetLogs(
-		[]string{"0xb37d31b2a74029b5951a2778f959282e2d518595"},
 		[]string{"0x15d2eeefbe4963b5b2178f239ddcc730dda55f1c23c22efb79ded0eb854ac789"},
 		16045356, 16045356)
 	fmt.Println(err)
@@ -80,7 +79,7 @@ func TestStargate(t *testing.T) {
 	}
 	topics0 := c.Topics0("bsc")
 	p := srvCtx.Providers.Get("bsc")
-	events, err := p.GetLogs(addrs, topics0, 23499162, 23499162)
+	events, err := p.GetLogs(topics0, 23499162, 23499162)
 	if err != nil {
 		return
 	}
@@ -95,7 +94,7 @@ func TestStargate(t *testing.T) {
 	}
 	topics0 = c.Topics0("eth")
 	p = srvCtx.Providers.Get("eth")
-	events, err = p.GetLogs(addrs, topics0, 16081998, 16081998)
+	events, err = p.GetLogs(topics0, 16081998, 16081998)
 	if err != nil {
 		return
 	}
@@ -110,7 +109,7 @@ func TestStargate(t *testing.T) {
 	}
 	topics0 = c.Topics0("bsc")
 	p = srvCtx.Providers.Get("bsc")
-	events, err = p.GetLogs(addrs, topics0, 23508697, 23508697)
+	events, err = p.GetLogs(topics0, 23508697, 23508697)
 	if err != nil {
 		return
 	}
@@ -130,7 +129,7 @@ func TestHop(t *testing.T) {
 
 	p := srvCtx.Providers.Get("polygon")
 
-	ret, err := p.GetLogs(addrs, topics0, 37111294, 37111294)
+	ret, err := p.GetLogs(topics0, 37111294, 37111294)
 	if err != nil {
 		return
 	}
@@ -170,7 +169,7 @@ func TestStargateFindPairs(t *testing.T) {
 
 	p := srvCtx.Providers.Get("eth")
 
-	ret, err := p.GetLogs(nil, nil, 16083387, 16083387)
+	ret, err := p.GetLogs(nil, 16083387, 16083387)
 	if err != nil {
 		return
 	}

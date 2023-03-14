@@ -19,8 +19,9 @@ func init() {
 }
 
 func TestGetLogs(t *testing.T) {
-	p := NewEtherScanProvider("https://api.etherscan.io/", []string{"Y5CIXMXJ23Y6H8JSRAUQ5T8SMT2VV9W17Z", "4RYCK1WU1W2NBCGDNVEV36GHSZTF6CGW2M"}, "http://192.168.3.59:10809", 20)
-	ret, err := p.GetLogs([]string{"0xbd3531da5cf5857e7cfaa92426877b022e612cf8"}, []string{"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"}, 12878196, 12878196)
+	p := NewEtherScanProvider("https://api.etherscan.io/", []string{"Y5CIXMXJ23Y6H8JSRAUQ5T8SMT2VV9W17Z", "4RYCK1WU1W2NBCGDNVEV36GHSZTF6CGW2M"}, "http://127.0.0.1:7890", 20)
+	ret, err := p.GetLogs([]string{"0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c"}, 12878196, 12878196)
+	println(len(ret))
 	utils.PrintPretty(ret)
 	fmt.Println(len(ret), err)
 }
@@ -74,7 +75,7 @@ func TestEtherscanRate(t *testing.T) {
 		limiter.Wait(context.Background())
 		fmt.Println("call")
 		go func() {
-			_, err := p.GetLogs([]string{"0xbd3531da5cf5857e7cfaa92426877b022e612caa"}, []string{"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"}, 12878196, 12878196)
+			_, err := p.GetLogs([]string{"0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"}, 12878196, 12878196)
 			if err != nil {
 				fmt.Println(err)
 			}

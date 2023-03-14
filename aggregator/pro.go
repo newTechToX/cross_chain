@@ -35,6 +35,7 @@ func (a *Aggregator) DoJobPro(c model.Colletcor, from, to uint64) {
 	latest := to
 	log.Info("start collector_pro", "chain", a.chain, "project", c.Name(), "last commit", last)
 	batchSize := BatchSize
+
 	for last < latest {
 		var shouldBreak bool
 		select {
@@ -47,6 +48,7 @@ func (a *Aggregator) DoJobPro(c model.Colletcor, from, to uint64) {
 		}
 		right := utils.Min(latest, last+batchSize)
 		fetched, err := a.WorkPro(c, last+1, right)
+
 		if err == utils.ErrTooManyRecords {
 			batchSize = batchSize / 2
 			log.Warn("too many req records", "chain", a.chain, "project", c.Name(), "batch size", batchSize)
@@ -56,6 +58,8 @@ func (a *Aggregator) DoJobPro(c model.Colletcor, from, to uint64) {
 			} else {
 				log.Error("job failed", "chain", a.chain, "project", c.Name(), "from", last+1, "to", right, "err", err)
 			}
+		} else if fetched > 0 {
+			return
 		} else {
 			last = right
 			log.Info("collect done", "chain", a.chain, "project", c.Name(), "current number", last, "batch size", batchSize)
@@ -77,14 +81,19 @@ func (a *Aggregator) WorkPro(c model.Colletcor, from, to uint64) (int, error) {
 	switch v := c.(type) {
 	case model.EventCollector:
 		topics0 := v.Topics0(a.chain)
-		events, err := a.provider.GetLogs(addrs, topics0, from, to)
+		events, err := a.provider.GetLogs(topics0, from, to)
 		if err != nil {
 			return 0, err
 		}
+		events = a.filterEvents(c.Name(), events)
 		totalFetched = len(events)
 		sort.Sort(events)
 		results = v.Extract(a.chain, events)
 	case model.MsgCollector:
+		addrs := c.Contracts(a.chain)
+		if len(addrs) == 0 {
+			return 0, nil
+		}
 		selectors := v.Selectors(a.chain)
 		calls, err := a.provider.GetCalls(addrs, selectors, from, to)
 		if err != nil {
@@ -95,54 +104,33 @@ func (a *Aggregator) WorkPro(c model.Colletcor, from, to uint64) (int, error) {
 	default:
 		panic("invalid collector")
 	}
-	err := a.svc.Dao.Save(results)
+	err := a.svc.Dao.Save(results, c.Name())
 	if err != nil {
 		return 0, fmt.Errorf("result save failed: %v", err)
 	}
 	return totalFetched, nil
 }
 
-func (a *Aggregator) getAddressesFirstInvocationPro(addresses []string) (uint64, error) {
-	nums := make([]uint64, 0)
-	for _, addr := range addresses {
-		n, err := a.provider.GetContractFirstInvocation(addr)
-		if err != nil {
-			log.Error("get address first invoke failed", "chain", a.chain, "address", addr, "err", err.Error())
+func (a *Aggregator) filterEvents(project string, events model.Events) model.Events {
+	var b model.Events
+	for _, event := range events {
+		if event.Hash == "0xb649db13ea04665c17ab87d11ac743263eb3bb790c763770bd64a5d78850987c" {
+			println(event.Hash)
 		}
-		if n != 0 {
-			nums = append(nums, n)
+		if !a.exsit(project, event.Hash, event.Id) {
+			b = append(b, event)
+			break
 		}
 	}
-	if len(nums) == 0 {
-		return 0, nil
-	}
-	return utils.Min(nums...), nil
+	return b
 }
 
-func (a *Aggregator) getCkptPro(project string, addresses []string) (uint64, error) {
-	last, err := a.svc.Dao.LastUpdate(a.chain, project)
-	if err != nil {
-		return 0, err
+func (a *Aggregator) exsit(project, hash string, log_index uint64) bool {
+	stmt := fmt.Sprintf("select id from %s where hash = $1 and log_index = $2", project)
+	var id uint64
+	err := a.svc.Dao.DB().Get(&id, stmt, hash, log_index)
+	if err != nil || id == 0 {
+		return false
 	}
-	if last == 0 {
-		last, err = a.getAddressesFirstInvocation(addresses)
-		if err != nil {
-			return 0, err
-		}
-	}
-	if last == 0 {
-		log.Error("addr first call is 0", "chain", a.chain, "project", project)
-		last, err = a.provider.LatestNumber()
-		if err != nil {
-			return 0, err
-		} else {
-			last = last - 1000000
-		}
-	}
-	// latest, err := a.provider.LatestNumber()
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// last = utils.Max(last, latest-1000000)
-	return last, nil
+	return true
 }

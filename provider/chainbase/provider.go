@@ -173,11 +173,8 @@ func (p *Provider) GetLogs(addresses []string, topics0 []string, from, to uint64
 	return res, nil
 }
 
-func (p *Provider) GetCalls(addresses, selectors []string, from, to uint64) ([]*model.Call, error) {
+func (p *Provider) GetCalls(addresses []string, selectors []string, from, to uint64) ([]*model.Call, error) {
 	limiter.Wait(context.Background())
-	if len(addresses) == 0 {
-		return nil, nil
-	}
 	res := make([]*model.Call, 0)
 	stmt := fmt.Sprintf("select * from %v.transactions where block_number >= %v and block_number <= %v and status = 1 and %v", p.table, from, to, formatOrCondition("to_address", addresses))
 	if p.enableTraceCall {

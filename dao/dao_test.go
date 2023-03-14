@@ -2,7 +2,6 @@ package dao
 
 import (
 	"app/model"
-	"app/utils"
 	"fmt"
 	"reflect"
 	"testing"
@@ -24,22 +23,18 @@ func TestDao(t *testing.T) {
 }
 
 func TestGet(t *testing.T) {
-	d := NewDao("postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/cross_chain?sslmode=disable")
+	//	d := NewDao("postgres://cross_chain:cross_chain_blocksec666@192.168.3.155:8888/cross_chain?sslmode=disable")
+	d := NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
 
-	stmt := "SELECT * FROM common_cross_chain WHERE id = $1"
-
-	res := model.Data{}
-	// _ = d.db.Get(&res, stmt, 1156329)
-	// fmt.Println(res.Id, res.Chain, res.Hash, res.MatchId, res.MatchTag)
-
-	// _ = d.db.Get(&res, stmt, 1131020)
-	// fmt.Println(res.Id, res.Chain, res.Hash, res.MatchId, res.MatchTag)
-	// _ = d.db.Get(&res, stmt, 1131019)
-	// fmt.Println(res.Id, res.Chain, res.Hash, res.MatchId, res.MatchTag)
-	err := d.db.Get(&res, stmt, 15159058)
-	// fmt.Println(res.Id, res.Chain, res.Hash, res.MatchId, res.MatchTag)
-	utils.PrintPretty(res)
-	fmt.Println(err)
+	stmt := fmt.Sprintf("select id from %s where hash = $1 and log_index = $2", "Anyswap")
+	var id uint64
+	var hash = "0x01e04e7936aa24195a0beec29d2fbd6be518ae103284169e22766f75bdcf4084"
+	log_index := 61
+	err := d.db.Get(&id, stmt, hash, log_index)
+	if err != nil || id == 0 {
+		fmt.Println(err)
+	}
+	fmt.Println(id)
 }
 
 func TestUpdate(t *testing.T) {

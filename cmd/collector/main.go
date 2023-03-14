@@ -51,7 +51,7 @@ func main() {
 	}()
 	var cfg config.Config
 
-	config.LoadCfg(&cfg, "./config.yaml")
+	config.LoadCfg(&cfg, "../config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
 	for name := range srvCtx.Config.ChainProviders {
 		agg := aggregator.NewAggregator(srvCtx, name)

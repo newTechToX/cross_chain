@@ -8,12 +8,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
-
-	"net/http"
 	_ "net/http/pprof"
+	"os"
 
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -21,6 +17,7 @@ import (
 var Name = flag.String("name", "", "input project name")
 var From = flag.Uint64("from", uint64(1547700), "input from blocknumber")
 var To = flag.Uint64("to", uint64(1547700), "input to blocknumber")
+var Chain = flag.String("chain", "", "input chain")
 
 func main() {
 	var logLvl = flag.String("log_level", "info", "set log level")
@@ -34,31 +31,19 @@ func main() {
 		panic(err)
 	}
 	aggregator.BatchSize = uint64(*batchSize)
-	go func() {
-		fmt.Println(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%v", *pprofPort), nil))
-	}()
+
 	fmt.Println("log level:", lvl.String(), "\nbatch size:", *batchSize, "\npprof port:", *pprofPort, "\nchainbase rate:", *chainbaseRate)
 	log.Root().SetHandler(log.MultiHandler(
 		log.LvlFilterHandler(log.LvlError, log.Must.FileHandler("./error.log", log.TerminalFormat(false))),
 		log.LvlFilterHandler(lvl, log.StreamHandler(os.Stderr, log.TerminalFormat(true))),
 	))
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, _ := context.WithCancel(context.Background())
 	chainbase.SetupLimit(*chainbaseRate)
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGTERM, syscall.SIGINT)
-		<-sig
-		cancel()
-	}()
 	var cfg config.Config
 
 	config.LoadCfg(&cfg, "./config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
-	for name := range srvCtx.Config.ChainProviders {
-		agg := aggregator.NewAggregator(srvCtx, name)
-		go agg.Start()
-	}
-	<-ctx.Done()
+	agg := aggregator.NewAggregator(srvCtx, *Chain)
+	agg.StartPro(srvCtx, *Name, *From, *To)
 	srvCtx.Wg.Wait()
-	fmt.Println("exit")
 }
