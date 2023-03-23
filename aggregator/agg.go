@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	BatchSize uint64
+	BatchSize uint64 = 9000
 )
 
 type Aggregator struct {

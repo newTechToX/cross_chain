@@ -43,6 +43,6 @@ func main() {
 	config.LoadCfg(&cfg, "./config.yaml")
 	srvCtx := svc.NewServiceContext(ctx, &cfg)
 	agg := aggregator.NewAggregator(srvCtx, *Chain)
-	agg.StartPro(srvCtx, *Name, *From, *To)
+	agg.StartPro(*Name, *From, *To)
 	srvCtx.Wg.Wait()
 }

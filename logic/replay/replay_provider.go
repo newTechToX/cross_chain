@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Replayer struct {
@@ -46,7 +47,7 @@ func (a *Replayer) Replay(data *model.Data) (*SimulatedTxn, error) {
 	}
 	body := Body{}
 
-	//time.Sleep(6 * time.Second)
+	time.Sleep(4 * time.Second)
 	buffer, err := a.replay(data)
 	if err != nil {
 		return nil, err

@@ -14,7 +14,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
+	"math/big"
 	"sort"
+	"sync"
 )
 
 type Processor struct {
@@ -622,4 +624,63 @@ func deleteAcrossDuplicates(d *dao.Dao, datas []*A, done chan struct{}) {
 		}
 	}
 	done <- struct{}{}
+}
+
+func UpdateAcrossMatchTag(datas model.Datas, d *dao.Dao) {
+	var wg sync.WaitGroup
+	var n = 6
+	var size = len(datas) / n
+	for i := 0; i < len(datas); i = i + size {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			right := utils.Min(len(datas), i+size)
+			updateAcrossTag(datas[i:right], d)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func updateAcrossTag(datas model.Datas, d *dao.Dao) {
+	for _, data := range datas {
+		if data != nil && data.MatchTag != "" && len(data.MatchTag) > 2 && data.MatchTag[:2] != "0x" {
+			continue
+		}
+		ss, _ := new(big.Int).SetString(data.MatchTag[2:], 16)
+		println(ss.String())
+		stmt := fmt.Sprintf("update across set match_tag='%s' where id = %d", ss.String(), data.Id)
+		_, err := d.DB().Exec(stmt)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+}
+
+func DeleteWrongChain(d *dao.Dao) {
+	id1 := 1610600
+	id2 := 1622320
+	stmt := fmt.Sprintf("select %s from across where id >= %d and id <= %d", model.ResultRows, id1, id2)
+	var datas model.Datas
+	err := d.DB().Select(&datas, stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+	stmt = fmt.Sprintf("delete from across where id = $1")
+	deleted := 0
+	for _, data := range datas {
+		if data.Direction == "out" && utils.GetChainId(data.Chain).String() != data.FromChainId.String() {
+			_, err = d.DB().Exec(stmt, data.Id)
+			if err != nil {
+				fmt.Println(err)
+			}
+			deleted++
+		} else if data.Direction == "in" && utils.GetChainId(data.Chain).String() != data.ToChainId.String() {
+			_, err = d.DB().Exec(stmt, data.Id)
+			deleted++
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}
+	println("deleted", deleted)
 }

@@ -42,6 +42,7 @@ func (a *Across) Extract(chain string, events model.Events) model.Datas {
 			Hash:     e.Hash,
 			LogIndex: e.Id,
 			Contract: e.Address,
+			Project:  a.Name(),
 		}
 
 		switch e.Topics[0] {
@@ -60,9 +61,9 @@ func (a *Across) Extract(chain string, events model.Events) model.Datas {
 			amount, _ := new(big.Int).SetString(e.Data[2:2+64], 16)
 			res.Amount = (*model.BigInt)(amount)
 
-			depositId := e.Topics[1]
+			depositId, _ := new(big.Int).SetString(e.Topics[1][2:], 16)
 			d := &Detail{
-				DepositId: depositId,
+				DepositId: depositId.String(),
 			}
 			res.MatchTag = d.DepositId
 
@@ -78,13 +79,13 @@ func (a *Across) Extract(chain string, events model.Events) model.Datas {
 
 			toChainId, _ := new(big.Int).SetString(e.Data[2+64*5:2+64*6], 16)
 			res.ToChainId = (*model.BigInt)(toChainId)
-			depositId := "0x" + e.Data[len_in-64*4:len_in-64*3]
+			depositId, _ := new(big.Int).SetString(e.Data[len_in-64*4:len_in-64*3], 16)
 			res.Token = "0x" + e.Data[len_in-64*3+24:len_in-128]
 			res.ToAddress = "0x" + e.Data[len_in-64*2+24:len_in-64]
 			amount, _ := new(big.Int).SetString(e.Data[2:2+64], 16)
 			res.Amount = (*model.BigInt)(amount)
 			d := &Detail{
-				DepositId: depositId,
+				DepositId: depositId.String(),
 				Relayer:   relayer,
 			}
 			res.MatchTag = d.DepositId

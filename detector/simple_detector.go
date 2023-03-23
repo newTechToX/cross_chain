@@ -2,12 +2,14 @@ package detector
 
 import (
 	"app/logic"
+	"app/logic/check_fake"
+	"app/logic/replay"
 	"app/model"
 	"app/svc"
 	"app/utils"
 	"fmt"
 	"github.com/ethereum/go-ethereum/log"
-	"sync"
+	log2 "log"
 )
 
 type SimpleOutDetector struct {
@@ -43,24 +45,72 @@ func (a *SimpleOutDetector) LastDetectId() uint64 {
 	return a.start_id
 }
 
+func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) {
+	if datas == nil || len(datas) == 0 {
+		return
+	}
+
+	log.Info("simpleOutDetector.DetectOutTx() begins")
+	var detected = 0
+	for _, data := range datas {
+		//t1 := time.Now()
+
+		//先检查fakeToken的情况
+		if isfake := a.logic.IsFakeToken(a.project, data); isfake != check_fake.SAFE {
+			info := fmt.Sprintf("fake token: fake token in database, chain:%s, address:%s, hash:%s", data.Chain, data.Token, data.Hash)
+			utils.SendMail("FAKE TOKEN DETECTED ", info)
+			detected++
+		} else {
+			data.IsFakeToken.Scan(1)
+			stmt := fmt.Sprintf("update %s set isfaketoken = 0 where id = %d", a.project, data.Id)
+			if _, err := a.svc.Dao.DB().Exec(stmt); err != nil {
+				log.Warn("failed to update safe token: ", data.Token, err)
+			}
+		}
+
+		//查replayOutLogic
+		if _, ok := replay.ReplaySupportChains[data.Chain]; !ok {
+			continue
+		}
+		tag, err := a.logic.ReplayOutTxLogic(a.project, data)
+		if err != nil {
+			log2.SetPrefix("CheckOutTx()")
+			utils.LogPrint(err.Error(), "../logic.log")
+		}
+		if tag.TokenProfitError != replay.SAFE || tag.ToAddressProfit == replay.TOKEN_PROFIT_MINUS_AMOUNT {
+			detected++
+			info := fmt.Sprintf("%s out tx error: chain:%s, hash:%s, token profit: %d, from profit: %d, to profit: %d",
+				a.project, data.Chain, data.Hash, tag.TokenProfitError, tag.FromAddressError, tag.ToAddressProfit)
+			utils.SendMail("OUT TX ERROR DETECTED ", info)
+		}
+	}
+	log.Info("simpleOutDetector.DetectOutTx() detected ", detected)
+	return
+}
+
 // OutDetector的 Detect 用于检测所有tx的fake token & chainID，将没有match的做二次检测
 // 对于fake chainID的检查还没做完
 
 /*func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	var n, detected = 3, 0
+	var wg = &sync.WaitGroup{}
 	var size = len(datas) / n
+	if size == 0 {
+		size = len(datas)
+		n = 1
+	}
 	log.Info("DetectOutTx() begins")
 	for i := 0; i < len(datas); i = i + size {
 		var right = utils.Min(i+size, len(datas))
-		responseChannel := make(chan int, n)
+		responseChannel := make(chan int, size)
 
 		// 这里在启动goroutine时, 将用来收集结果的局部变量channel也传递进去
-		go a.logic.CheckOutTx(a.project, datas[i:right], responseChannel, wg) //, limiter)
+		go a.detectOutTx(datas[i:right], responseChannel, wg) //, limiter)
 	}
 	return detected
 }*/
 
-func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
+/*func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	var n, detected = 5, 0
 	var size = len(datas) / n
 	//var bar = utils.Bar(size, a.project)
@@ -69,15 +119,6 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	//defer close(limiter)
 
 	responseChannel := make(chan int, n+1)
-	// 为读取结果控制器创建新的WaitGroup, 需要保证控制器内的所有值都已经正确处理完毕, 才能结束
-	/*wgResponse := &sync.WaitGroup{}
-	// 启动读取结果的控制器
-	go func() {
-		// wgResponse计数器+1
-		wgResponse.Add(1)
-		// 当 responseChannel被关闭时且channel中所有的值都已经被处理完毕后, 将执行到这一行
-		wgResponse.Done()
-	}()*/
 
 	log.Info("DetectOutTx() begins")
 	for i := 0; i < len(datas); i = i + size {
@@ -100,6 +141,6 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) int {
 	/*err := bar.Close()
 	if err != nil {
 		log.Warn("DetectOutTx(): Failed to close bar", "Error", err)
-	}*/
+	}
 	return detected
-}
+}*/

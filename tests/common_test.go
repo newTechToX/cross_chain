@@ -4,10 +4,12 @@ import (
 	"app/dao"
 	"app/model"
 	"app/utils"
+	"database/sql"
 	"fmt"
 	"github.com/schollz/progressbar/v3"
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -212,7 +214,7 @@ func Test_go(t *testing.T) {
 	fmt.Println(res)
 }
 
-func f(list []int, response chan int, limiter chan bool, wg *sync.WaitGroup, bar *progressbar.ProgressBar) {
+func fu(list []int, response chan int, limiter chan bool, wg *sync.WaitGroup, bar *progressbar.ProgressBar) {
 
 	defer wg.Done()
 	for _, i := range list {
@@ -252,7 +254,7 @@ func collect(urls []int) []int {
 		wg.Add(1)
 		limiter <- true
 		// 这里在启动goroutine时, 将用来收集结果的局部变量channel也传递进去
-		go f(urls[i:], responseChannel, limiter, wg, bar)
+		go fu(urls[i:], responseChannel, limiter, wg, bar)
 	}
 
 	// 等待所以协程执行完毕
@@ -306,14 +308,153 @@ func deleteSlice(a Sli, ids []int) Sli {
 }
 
 func TestMap(t *testing.T) {
-	a := map[int]int{
-		1: 2, 4: 3,
+	a := map[int][]int{
+		1: {1, 2}, 4: {2, 3},
 	}
-	a[5] = 6
-	if a[7] > 4 {
-		println("1")
-	} else {
-		a[7] += 1
+	a[5] = append(a[5], 9)
+	fmt.Println(a[5])
+}
+
+func TestChan(t *testing.T) {
+	num := map[int]int{}
+	list := []int{1, 2, 3, 4, 5}
+	//channels := make(chan int)
+	aa := 0
+	Wg := &sync.WaitGroup{}
+	t1 := time.Now()
+	for _, i := range list {
+		go testChan(i, num, Wg)
+		//aa += <-channels
 	}
-	println(a[7])
+	testChan(1, num, Wg)
+	t2 := time.Now()
+	fmt.Println(t2.Sub(t1).String(), aa)
+	fmt.Println(num)
+}
+func testChan(a int, num map[int]int, wg *sync.WaitGroup) {
+	wg.Add(1)
+	defer wg.Done()
+	for i := 0; i < a; i++ {
+		time.Sleep(time.Second)
+	}
+	num[a] = a + 1
+}
+
+func TestContinur(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5}
+	for i := 0; i < 5; i++ {
+		switch a[i] {
+		case 3:
+			if a[i] == 4 {
+				continue
+			}
+			println(a[i])
+		default:
+			println(a[i])
+		}
+	}
+}
+
+func f(i int) int {
+	time.Sleep(time.Duration(i) * time.Second) // 模拟函数执行需要一定时间
+	return i * 2                               // 返回i的两倍
+}
+
+func TestGPTch(t *testing.T) {
+	var wg sync.WaitGroup
+	ch := make(chan int, 10) // 设置通道的缓冲区大小为10
+
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			result := f(i)
+			ch <- result // 将结果发送到通道中
+		}(i)
+	}
+
+	wg.Wait()
+
+	close(ch) // 关闭通道，表示所有协程已经完成
+
+	sum := 0
+	for result := range ch {
+		sum += result // 从通道中获取结果，并累加到sum变量中
+	}
+
+	fmt.Println("Sum:", sum)
+}
+
+type SafeWaitGroup struct {
+	wg  sync.WaitGroup
+	cnt int32
+}
+
+func (swg *SafeWaitGroup) Add(delta int) {
+	atomic.AddInt32(&swg.cnt, int32(delta))
+	swg.wg.Add(delta)
+}
+
+func (swg *SafeWaitGroup) Done() {
+	cnt := atomic.AddInt32(&swg.cnt, -1)
+	if cnt < 0 {
+		panic("negative WaitGroup counter")
+	}
+	swg.wg.Done()
+}
+
+func (swg *SafeWaitGroup) Wait() {
+	swg.wg.Wait()
+}
+
+func main() {
+	var swg SafeWaitGroup
+
+	for i := 0; i < 10; i++ {
+		swg.Add(1)
+		go func(i int) {
+			defer swg.Done()
+			fmt.Println(i * 2)
+		}(i)
+	}
+
+	swg.Wait()
+}
+
+func TestScan(t *testing.T) {
+	var a sql.NullString
+	if !a.Valid || a.String == "" {
+		_ = a.Scan("iuouo")
+	}
+	println(a.String)
+}
+
+type A struct {
+	a int
+}
+type B struct {
+	b int
+	c []*A
+}
+
+func TestAppend(t *testing.T) {
+	s := make(map[int]*B, 1)
+	for i := 0; i < 3; i++ {
+		te(s, i)
+	}
+
+	for v, k := range s {
+		fmt.Println(v, k)
+	}
+	return
+}
+
+func te(s map[int]*B, i int) {
+	if _, ok := s[i]; !ok {
+		s[i] = &B{
+			b: i,
+			c: []*A{},
+		}
+	}
+	s[i].c = append(s[i].c, &A{a: i + 1})
 }

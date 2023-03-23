@@ -124,7 +124,7 @@ func (p *Provider) GetTraces(chain, hash string) ([]*chainbase.SyChainbaseInfo, 
 	return res, err
 }
 
-func (p *Provider) GetSender(chain, hash string) (string, error) {
-	sender, err := p.chainbase.GetSender(chain, hash)
-	return sender, err
+func (p *Provider) GetSender(chain, hash string) string {
+	sender := p.chainbase.GetSender(chain, hash)
+	return sender
 }

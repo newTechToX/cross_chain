@@ -86,7 +86,7 @@ func (a *FakeChecker) IsFakeToken(project string, t *model.Data) int {
 				log.SetPrefix("IsFakeToken()")
 				errs = append(errs, &s)
 			} else { // 如果查到了deployer的信息，若name前缀 == "Multichain"
-				if deployer_info_aml[deployer_info_from_provider.Deployer][0].Name[:10] == "Multichain" {
+				if deployer_info_aml[deployer_info_from_provider.Deployer][0].Name[:10] == "Multichain" || deployer_info_aml[deployer_info_from_provider.Deployer][0].Name == "CONTRACT DEPLOYER" {
 					res = SAFE
 				} else {
 					res = FAKE_TOKEN

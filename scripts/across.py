@@ -193,5 +193,11 @@ def acrossMain():
         print(f"objects inserted: {inserted}")
 
 
+def testChain():
+    if "boba" in Web3QueryStartBlock:
+        print("no")
+
 if __name__ == "__main__":
-    acrossMain()
+    #acrossMain()
+    testChain()
+

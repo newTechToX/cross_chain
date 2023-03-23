@@ -7,12 +7,6 @@ import (
 	"app/logic/replay"
 	"app/model"
 	"app/svc"
-	"app/utils"
-	"fmt"
-	"github.com/ethereum/go-ethereum/log"
-	log2 "log"
-
-	"sync"
 )
 
 type Logic struct {
@@ -37,7 +31,15 @@ func NewLogic(svc *svc.ServiceContext, chain string, config_path string) *Logic 
 // fake token 和 fake chainId
 //chainID的检查还没完成
 
-func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup) { //limiter chan bool, bar ...*progressbar.ProgressBar) {
+func (a *Logic) IsFakeToken(project string, data *model.Data) int {
+	return a.fake_checker.IsFakeToken(project, data)
+}
+
+func (a *Logic) ReplayOutTxLogic(project string, data *model.Data) (replay.Tags, error) {
+	return a.replayer.ReplayOutTxLogic(project, data)
+}
+
+/*func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int, wg *sync.WaitGroup) { //limiter chan bool, bar ...*progressbar.ProgressBar) {
 	if datas == nil || len(datas) == 0 {
 		return
 	}
@@ -79,7 +81,7 @@ func (a *Logic) CheckOutTx(project string, datas model.Datas, detected chan int,
 	//bar.Add(1)
 	//<-limiter
 	return
-}
+}*/
 
 /*func (a *Logic) CheckOutTx(project string, datas model.Datas, unsafe_tokens_chan chan map[int]model.Datas, wg *sync.WaitGroup, limiter chan bool, bar *progressbar.ProgressBar) {
 	if datas == nil || len(datas) == 0 {

@@ -140,7 +140,6 @@ func (d *Dao) save(tx *sqlx.Tx, results model.Datas, table ...string) error {
 		return nil
 	}
 	stmt := fmt.Sprintf("insert into %s (%s) values (%s)", d.table, resultInsertRows, resultInsertTags)
-	fmt.Println(stmt)
 	_, err := tx.NamedExec(stmt, results)
 	return err
 }

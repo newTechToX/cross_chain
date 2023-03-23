@@ -25,10 +25,10 @@ func init() {
 }
 
 func TestChecker_IsFakeToken(t *testing.T) {
-	id := 16
-	a := NewFakeChecker(srvCtx, "ethereum", "../txt_config.yaml")
+	id := 7724704
+	a := NewFakeChecker(srvCtx, "bsc", "../txt_config.yaml")
 	var data model.Datas
-	stmt := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
+	stmt := fmt.Sprintf("select %s from anyswap where id = %d", model.ResultRows, id)
 	a.svc.Dao.DB().Select(&data, stmt)
-	a.IsFakeToken("across", data[0])
+	a.IsFakeToken("anyswap", data[0])
 }

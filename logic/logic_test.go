@@ -101,7 +101,7 @@ func TestLogic_CheckDuplicateIn(t *testing.T) {
 	var datas model.Datas
 	d.DB().Select(&datas, stmt)
 	a := NewLogic(srvCtx, "bsc", "./txt_config.yaml")
-	a.in_checker = check_in.NewInChecker(d)
+	a.in_checker = check_in.NewInChecker(srvCtx)
 
 	i := 0
 	size := len(datas) / 50

@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	interval_fake = 20
-	batchSize     = 10000
+	interval_fake = 5
+	batchSize     = 800
 )
 
 type Detector struct {
@@ -67,14 +67,14 @@ func (m *Detector) StartDetectOutTx(project string, detector model.Detector) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				fake, err := m.beginDetectOutTx(last+1, right, project, detector)
+				err := m.beginDetectOutTx(last+1, right, project, detector)
 				if err != nil {
 					log.Error("detectFake job failed", "project", project, "from", last+1, "to", right, "err", err)
 				} else {
 					last = right
 					t2 := time.Now()
 					log.Info("\ndetectFake done", "project", project, "current Id", last, "batch size", batchSize,
-						"fake", fake, "time", t2.Sub(t1).String())
+						"time", t2.Sub(t1).String())
 				}
 			}
 		}
@@ -82,7 +82,7 @@ func (m *Detector) StartDetectOutTx(project string, detector model.Detector) {
 	}
 }
 
-func (m *Detector) beginDetectOutTx(from, to uint64, project string, detector model.Detector) (fake int, err error) {
+func (m *Detector) beginDetectOutTx(from, to uint64, project string, detector model.Detector) (err error) {
 	var stmt string
 	switch detector.(type) {
 	case *SimpleOutDetector:
@@ -95,7 +95,7 @@ func (m *Detector) beginDetectOutTx(from, to uint64, project string, detector mo
 	if err != nil {
 		return
 	}
-	fake = detector.DetectOutTx(results)
+	detector.DetectOutTx(results)
 	if err != nil {
 		return
 	}

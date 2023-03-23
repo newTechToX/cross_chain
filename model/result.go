@@ -99,8 +99,8 @@ type Datas []*Data
 var CommonFiledNames = []string{
 	"id", "chain", "block_number", "tx_index", "hash", "log_index", "contract",
 	"direction", "from_chain", "from_address", "to_chain", "to_address", "token",
-	"amount", "match_tag", "profit", "from_address_error", "to_address_profit",
-	"token_profit_error", "isfaketoken",
+	"amount", "match_tag", "from_address_error", "to_address_profit",
+	"token_profit_error", "isfaketoken", "project",
 }
 
 var (

@@ -73,3 +73,46 @@ func TestSup(t *testing.T) {
 		println("ay")
 	}
 }
+
+func TestMatcher_Match(t *testing.T) {
+	//stmt := fmt.Sprintf("select %s from across where match_tag = $1 and direction = '%s' and to_chain = $2 and from_address = $3 and to_address = $4 and amount = $5", model.ResultRows, model.OutDirection)
+	d := dao.NewDao("postgres://xiaohui_hu:xiaohui_hu_blocksec888@192.168.3.155:8888/cross_chain?sslmode=disable")
+	crossIns := model.Datas{}
+	//pending := model.Datas{}
+	id := 1610234
+	s := fmt.Sprintf("select %s from across where id = %d", model.ResultRows, id)
+	err := d.DB().Select(&crossIns, s)
+	if err != nil {
+		fmt.Println(err)
+	}
+	//crossIn := crossIns[0]
+	a := NewSimpleInMatcher("across", srvCtx.Dao, uint64(id))
+	shou, _, err := a.Match(crossIns)
+	println(len(shou))
+}
+
+func TestSimpleInMatcher_ProcessUnmatch(t *testing.T) {
+	id1 := 7510724
+	id2 := 7690430
+	stmt := fmt.Sprintf("select %s from anyswap where id >= $1 and id <= $2 and direction = 'in' and match_id is null order by id asc", model.ResultRows)
+	crossIns := model.Datas{}
+	err := d.DB().Select(&crossIns, stmt, id1, id2)
+	if err != nil {
+		fmt.Println(err)
+	}
+	println(len(crossIns))
+
+	a := NewSimpleInMatcher("anyswap", srvCtx.Dao, uint64(id1)-1)
+	b := NewMatcher(srvCtx, map[string]uint64{"anyswap": uint64(id1) - 1})
+	shou, un, err := a.Match(crossIns)
+	println(len(shou))
+	err = srvCtx.Dao.Update("anyswap", shou)
+
+	shou = b.ProcessUnmatch("anyswap", un, a)
+	err = srvCtx.Dao.Update("anyswap", shou)
+	println(len(un))
+}
+
+func TestMatcher_ProcessUnmatch(t *testing.T) {
+
+}

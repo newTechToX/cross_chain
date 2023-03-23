@@ -1,10 +1,12 @@
 package matcher
 
 import (
+	"app/aggregator"
 	"app/model"
 	"app/svc"
 	"app/utils"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -17,7 +19,7 @@ const (
 )
 
 var Projects = []string{
-	"anyswap", "across",
+	"anyswap", "across", //"synapse",
 }
 
 type Matcher struct {
@@ -26,12 +28,6 @@ type Matcher struct {
 }
 
 func NewMatcher(svc *svc.ServiceContext, startIds map[string]uint64) *Matcher {
-	if _, ok := startIds["anyswap"]; !ok {
-		return nil
-	}
-	if _, ok := startIds["across"]; !ok {
-		return nil
-	}
 	var projects = make(map[string]model.Matcher)
 	for _, project := range Projects {
 		projects[project] = NewSimpleInMatcher(project, svc.ProjectsDao, startIds[project])
@@ -77,7 +73,11 @@ func (m *Matcher) StartMatch(matcher model.Matcher) {
 					break
 				}
 				right := utils.Min(latest, last+batchSize)
-				last -= 300
+				if last > 1000 {
+					last -= 1000
+				} else {
+					last = 1
+				}
 				total, matched, err := m.BeginMatch(last+1, right, matcher.Project(), matcher)
 				if err != nil {
 					log.Error("match job failed", "project", matcher.Project(), "from", last+1, "to", right, "err", err)
@@ -121,15 +121,81 @@ func (m *Matcher) BeginMatch(from, to uint64, project string, matcher model.Matc
 	if err != nil {
 		return
 	}
-	shouldUpdates, err := matcher.Match(results)
+	shouldUpdates_1, unmatches_map, err := matcher.Match(results)
 	if err != nil {
 		return
 	}
-	err = m.svc.Dao.Update(project, shouldUpdates)
+	err = m.svc.Dao.Update(project, shouldUpdates_1)
 	if err != nil {
 		return
 	}
-	matched = len(shouldUpdates) / 2
+	shouldUpdates_2 := m.ProcessUnmatch(project, unmatches_map, matcher)
+	err = m.svc.Dao.Update(project, shouldUpdates_2)
+	if err != nil {
+		return
+	}
+	matched = (len(shouldUpdates_1) + len(shouldUpdates_2)) / 2
 	total = len(results)
+	return
+}
+
+type Block struct {
+	MAX   uint64 `db:"max"`
+	MIN   uint64 `db:"min"`
+	Chain string `db:"chain"`
+}
+
+type Blocks []*Block
+
+func (m *Matcher) ProcessUnmatch(project string, unmatches_map map[string]model.Datas, matcher model.Matcher) (shouldUpdates model.Datas) {
+	blocks := m.extractUnmatchInfo(project, unmatches_map)
+
+	var wg sync.WaitGroup
+	for _, b := range blocks {
+		wg.Add(1)
+		go func(svc *svc.ServiceContext, project, chain string, from, to uint64) {
+			defer wg.Done()
+			log.Info("matcher.ProcessUnmatch start ", "Chain", chain, "From", from, "To", to)
+			agg := aggregator.NewAggregator(svc, chain)
+			agg.StartPro(project, from, to)
+		}(m.svc, project, b.Chain, b.MIN, b.MAX)
+
+		/*cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
+		dd, _ := cmd.Output()
+		log.Info("Process Unmatch done")
+		if string(dd) != "" {
+			fetched, _ := strconv.Atoi(string(dd))
+			return fetched
+		}*/
+	}
+	wg.Wait()
+
+	var pre_unmatches model.Datas
+	for _, datas := range unmatches_map {
+		pre_unmatches = append(pre_unmatches, datas...)
+	}
+
+	shouldUpdates, still_unmatches, err := matcher.Match(pre_unmatches)
+	if err != nil {
+		return
+	}
+	for _, un := range still_unmatches {
+		matcher.SendMail("UNMATCH", un)
+	}
+	log.Info("matcher.ProcessUnmatch done", "total ", len(pre_unmatches), "matched ", len(shouldUpdates), "unmatch ", len(still_unmatches))
+	return
+}
+
+func (a *Matcher) extractUnmatchInfo(project string, unmatches_map map[string]model.Datas) (unmatch_blocks Blocks) {
+	for chainId, datas := range unmatches_map {
+		s := fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and direction = 'out' and from_chain = %s group by chain", project, chainId)
+		var blocks Blocks
+		err := a.svc.Dao.DB().Select(&blocks, s, datas[0].Id-1000)
+		if err != nil {
+			log.Warn("Matcher.extractUnmatchInfo failed ", "Error", err)
+			continue
+		}
+		unmatch_blocks = append(unmatch_blocks, blocks...)
+	}
 	return
 }

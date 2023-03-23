@@ -8,42 +8,40 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"math/big"
-	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/log"
 )
 
 type SimpleInMatcher struct {
-	project       string
-	dao           *dao.Dao
-	start_id      uint64
-	unmatches_map map[uint64]struct{}
+	project  string
+	dao      *dao.Dao
+	start_id uint64
 }
 
 var _ model.Matcher = &SimpleInMatcher{}
 
 func NewSimpleInMatcher(project string, dao *dao.Dao, start_id uint64) *SimpleInMatcher {
 	return &SimpleInMatcher{
-		project:       project,
-		dao:           dao,
-		start_id:      start_id,
-		unmatches_map: make(map[uint64]struct{}),
+		project:  project,
+		dao:      dao,
+		start_id: start_id,
 	}
 }
 
 func (a *SimpleInMatcher) LastUnmatchId() uint64 {
-	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in (1, 10, 56, 137, 250, 288, 42161, 43114)", a.project, a.start_id)
+	stmt := fmt.Sprintf("select min(id) from %s where direction = 'in' and id >= %d and match_id is null and from_chain in ('1', '10', '56', '137', '250', '288', '42161', '43114', '25')", a.project, a.start_id)
 	type ID struct {
 		Id uint64 `db:"min"`
 	}
 	var id = ID{a.start_id}
 	if err := a.dao.DB().Get(&id, stmt); err != nil {
 		log.Warn("failed to get unmatchId", "project", a.project, "ERROR", err)
-	} else {
+	} else if id.Id > 500 {
 		a.start_id = id.Id - 500
+	} else {
+		a.start_id = 1
 	}
 	return a.start_id
 }
@@ -58,41 +56,42 @@ func (a *SimpleInMatcher) Project() string {
 // require: to_chain_id in cross-out must exist
 // matched: match_tags equal
 
-func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Datas, err error) {
+func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Datas, unmatches_map map[string]model.Datas, err error) {
+	unmatches_map = make(map[string]model.Datas)
 	for _, crossIn := range crossIns {
 		from_id := crossIn.FromChainId.String()
 		if _, ok := SupportedChainIds[a.project][from_id]; !ok {
 			continue
 		}
-		if crossIn.Direction != model.InDirection {
-			log.Warn("matching should not input cross-out")
+		if crossIn.Direction != model.InDirection || crossIn.MatchTag == "" {
+			//log.Warn("matching should not input cross-out")
 			continue
 		}
 		var pending model.Datas
 		var stmt string
-		var err error
+		var across_amount = new(model.BigInt).SetString("100", 10)
 
 		switch a.project {
 		case "across":
-			stmt = fmt.Sprintf("select %s from %s where match_tag = $1 and direction = '%s' and to_chain = $2 and from_address = $3 and to_address = $4 and amount = $5", model.ResultRows, a.project, model.OutDirection)
-			err = a.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String(), crossIn.FromAddress, crossIn.ToAddress, crossIn.Amount.String())
+			if crossIn.Amount.Cmp(across_amount) <= 0 {
+				continue
+			}
+			stmt = fmt.Sprintf("select %s from across where match_tag = '%s' and direction = 'out' and to_chain = %s and from_address = '%s' and to_address = '%s' and (amount = %s or total_amount = %s)",
+				model.ResultRows, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String(), crossIn.FromAddress, crossIn.ToAddress, crossIn.Amount.String(), crossIn.Amount.String())
+			//stmt = fmt.Sprintf("select %s from across where direction = 'out' and match_tag = '%s' and to_chain = %s and from_address = $3 and to_address = $4 and amount = $5")
+			err = a.dao.DB().Select(&pending, stmt)
 		default:
 			stmt = fmt.Sprintf("select %s from %s where match_tag = $1 and direction = '%s' and to_chain = $2", model.ResultRows, a.project, model.OutDirection)
 			err = a.dao.DB().Select(&pending, stmt, crossIn.MatchTag, utils.GetChainId(crossIn.Chain).String())
 		}
 		if err != nil {
-			return nil, err
+			return
 		}
+
 		if len(pending) == 0 {
-			var fetched = 1
-			_, ok := a.unmatches_map[crossIn.Id]
-			if !ok && crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
+			if crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
 				//说明还没有拉过数据
-				fetched = a.processUnmatch(crossIn)
-			}
-			if ok || fetched == 0 {
-				//没有拉取到数据或者已经拉过了
-				a.SendMail("UNMATCH", model.Datas{crossIn})
+				unmatches_map[crossIn.FromChainId.String()] = append(unmatches_map[crossIn.FromChainId.String()], crossIn)
 			}
 			continue
 		}
@@ -102,15 +101,9 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		var dups = model.Datas{crossIn}
 		for _, counterparty := range pending {
 			if !isMatched(counterparty, crossIn) {
-				var fetched = 1
-				_, ok := a.unmatches_map[crossIn.Id]
-				if !ok && crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
+				if crossIn.Id+100 < crossIns[len(crossIns)-1].Id {
 					//说明还没有拉过数据
-					fetched = a.processUnmatch(crossIn)
-				}
-				if ok || fetched == 0 {
-					//没有拉取到数据或者已经拉过了
-					a.SendMail("UNMATCH", model.Datas{crossIn})
+					unmatches_map[crossIn.FromChainId.String()] = append(unmatches_map[crossIn.FromChainId.String()], crossIn)
 				}
 				continue
 			}
@@ -120,10 +113,8 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 				//说明已经match过，但有可能是数据重复的原因
 				stmt = fmt.Sprintf("select %s from %s where id = %d", model.ResultRows, a.project, counterparty.MatchId.Int64)
 				var dup model.Data
-				if err = a.dao.DB().Get(&dup, stmt); err != nil {
-					fmt.Println(err)
-
-				} else if dup.Hash == "" { //如果之前匹配的数据被删除了
+				if err = a.dao.DB().Get(&dup, stmt); err != nil || dup.Hash == "" {
+					multi = 1 //如果之前匹配的数据被删除了
 					valid_ = append(valid_, counterparty)
 					fillEmptyFields(counterparty, crossIn)
 
@@ -142,9 +133,9 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 			}
 		}
 		if len(valid_) == 0 {
-			if multi == 0 {
-				a.SendMail("UNMATCH", dups)
-				log.Error("unmatch", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
+			if multi == 0 && (crossIn.Id+100 < crossIns[len(crossIns)-1].Id || crossIn.Id < 1622720) {
+				//说明还没有拉过数据
+				unmatches_map[crossIn.FromChainId.String()] = append(unmatches_map[crossIn.FromChainId.String()], crossIn)
 			} else if multi == 1 {
 				a.SendMail("MULTI MATCHED IN", dups)
 				log.Error("in tx multi matched", "src", crossIn.Hash, "chain", crossIn.Chain, "project", a.project)
@@ -171,9 +162,6 @@ func (a *SimpleInMatcher) Match(crossIns []*model.Data) (shouldUpdates model.Dat
 		if len(valid) >= 1 {
 			shouldUpdates = append(shouldUpdates, crossIn)
 			shouldUpdates = append(shouldUpdates, valid...)
-			if _, ok := a.unmatches_map[crossIn.Id]; ok {
-				delete(a.unmatches_map, crossIn.Id)
-			}
 		}
 	}
 	return
@@ -196,7 +184,6 @@ func isMatched(out, in *model.Data) bool {
 	if out.ToAddress != "" && in.ToAddress != "" && strings.ToLower(out.ToAddress) != strings.ToLower(in.ToAddress) {
 		return false
 	}
-
 	return true
 }
 
@@ -285,84 +272,3 @@ func isDuplicated(b, c *model.Data) bool {
 	}
 	return false
 }
-
-func (m *SimpleInMatcher) processUnmatch(unmatch *model.Data) int {
-	m.unmatches_map[unmatch.Id] = struct{}{}
-
-	type Blocks struct {
-		MAX   uint64 `db:"max"`
-		MIN   uint64 `db:"min"`
-		Chain string `db:"chain"`
-	}
-
-	var stmt string
-	if unmatch.FromChainId.String() != "" || unmatch.FromChainId.String() != "0" {
-		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' and from_chain = %s group by chain", m.project, unmatch.FromChainId.String())
-	} else {
-		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' group by chain", m.project)
-	}
-	var blocks = []*Blocks{}
-	err := m.dao.DB().Select(&blocks, stmt, unmatch.Id-2000, unmatch.Id+150)
-	if err != nil {
-		return 0
-	}
-	for _, b := range blocks {
-		from_block := strconv.FormatUint(b.MIN, 10)
-		to_block := strconv.FormatUint(b.MAX, 10)
-		cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
-		dd, _ := cmd.Output()
-		if string(dd) != "" {
-			fetched, _ := strconv.Atoi(string(dd))
-			return fetched
-		}
-	}
-	return 0
-}
-
-/*func (m *SimpleInMatcher) processUnmatch(from, to uint64, project string, unmatches_map map[uint64]int) error {
-	//先查出unmatch in
-	stmt := fmt.Sprintf("select %s from %s where direction = 'in' and id >= $1 and id <= $2 and match_id is null", model.ResultRows, project)
-	var unmatches model.Datas
-	err := m.dao.DB().Select(&unmatches, stmt, from, to)
-	if err != nil {
-		return err
-	}
-	if len(unmatches) == 0 {
-		return nil
-	}
-	for _, unmatch := range unmatches {
-		if _, ok := unmatches_map[unmatch.Id]; !ok {
-			//如果第一次unmatch，就先记录下来
-			unmatches_map[unmatch.Id] = 1
-			continue
-		}
-		if unmatches_map[unmatch.Id] <= 3 {
-			unmatches_map[unmatch.Id] += 1
-			continue
-		}
-
-		type Blocks struct {
-			MAX   uint64 `db:"max"`
-			MIN   uint64 `db:"min"`
-			Chain string `db:"chain"`
-		}
-
-		stmt = fmt.Sprintf("select max(block_number), min(block_number), chain from %s where id >= $1 and id <= $2 and direction = 'out' and from_chain != $3 group by chain", project)
-		var blocks = []*Blocks{}
-		err := m.dao.DB().Select(&blocks, stmt)
-		if err != nil {
-			return err
-		}
-		for _, b := range blocks {
-			from_block := strconv.FormatUint(b.MIN, 10)
-			to_block := strconv.FormatUint(b.MAX, 10)
-			cmd := exec.Command("./pro", "-name", "anyswap", "-from", from_block, "-to", to_block, "-chain", b.Chain)
-			data, err := cmd.Output()
-			if err != nil {
-				panic(err)
-			}
-			fmt.Println(string(data))
-		}
-	}
-	return err
-}*/

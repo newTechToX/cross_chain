@@ -151,3 +151,17 @@ func TestProcessor_DeleteAcrossDuplicate(t *testing.T) {
 	a := Processor{}
 	a.DeleteAcrossDuplicate(d)
 }
+
+func TestUpdateAcrossMatchTag(t *testing.T) {
+	stmt := fmt.Sprintf("select %s from across where id>1607000", model.ResultRows)
+	var datas model.Datas
+	err := d.DB().Select(&datas, stmt)
+	if err != nil {
+		fmt.Println(err)
+	}
+	UpdateAcrossMatchTag(datas, d)
+}
+
+func TestDeleteWrongChain(t *testing.T) {
+	DeleteWrongChain(d)
+}

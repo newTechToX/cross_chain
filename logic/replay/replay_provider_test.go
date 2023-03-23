@@ -52,11 +52,13 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 	a := NewReplayer(nil, nil, "../txt_config.yaml")
 	//hash := "0x4f2eb92a2a9a21bd0c19eab7b4dd3ff4cea4979b70ea4cf56fe20a6e14f73bbd"
 	id := []int{
-		7614156,
+		7830805,
 	}
 
+	project := "anyswap"
+
 	for _, i := range id {
-		stmt := fmt.Sprintf("select %s from anyswap where id = %d", model.ResultRows, i)
+		stmt := fmt.Sprintf("select %s from %s where id = %d", model.ResultRows, project, i)
 
 		var datas = []*model.Data{}
 		err := d.DB().Select(&datas, stmt)
@@ -66,7 +68,7 @@ func TestLogic_ReplayOutTxLogic(t *testing.T) {
 
 		a.svc = srvCtx
 		a.aml = aml.NewAML("../txt_config.yaml")
-		tag, err := a.ReplayOutTxLogic("anyswap", datas[0])
+		tag, err := a.ReplayOutTxLogic(project, datas[0])
 		fmt.Println(tag)
 	}
 }

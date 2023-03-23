@@ -29,6 +29,8 @@ const TOKEN_PROFIT_MINUS_AMOUNT, OTHER_ADDRESS_PROFIT = 2, 1
 
 const PROFIT_ADDRESS_NOT_FOUND_LABEL = 6
 
+const SAFE = 0
+
 /*
 已经标注的fake token --> 做验证
 */
@@ -62,7 +64,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	//如果数据中的from_address不在balance——change里面，那么就获取tx_sender作为from_address再检查一次
 	if !is_depositor {
 		provider := a.svc.Providers.Get(data.Chain)
-		data.FromAddress, err = provider.GetSender(data.Chain, data.Hash)
+		data.FromAddress = provider.GetSender(data.Chain, data.Hash)
 	}
 
 	for _, e := range tx.BalanceChanges {
@@ -85,7 +87,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 			continue
 		}
 		if tx.BalanceChanges[i].Account == data.ToAddress && data.Token != data.ToAddress {
-			println("toaddr_profit ", data.Hash)
+			//println("toaddr_profit ", data.Hash)
 			tag.ToAddressProfit = 1
 		}
 		addresses = append(addresses, tx.BalanceChanges[i].Account)
@@ -118,8 +120,9 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	//检查token的获利是否符合
 	if tag.TokenProfitError != 1 {
 		if ok := a.checkTokenProfit(real_token, data.Amount, tx.BalanceChanges); ok != 0 {
-			println("token_profit_error ", data.Hash)
 			tag.TokenProfitError = ok
+		} else {
+			tag.TokenProfitError = SAFE
 		}
 
 	}

@@ -414,15 +414,18 @@ func (p *Provider) GetTraces(chain, hash string) ([]*SyChainbaseInfo, error) {
 	return ret, err
 }
 
-func (p *Provider) GetSender(chain, hash string) (string, error) {
+func (p *Provider) GetSender(chain, hash string) string {
 	type S struct {
 		Sender string `json:"from_address"`
 	}
 	stmt := fmt.Sprintf("select from_address from %s.transactions where transaction_hash='%s'", chain, hash)
 	ret, err := Exec[*S](stmt, p.apiKey, p.proxy)
 	if len(ret) == 0 || err != nil {
-		log.Warn("GetSender(): failed to get sender", "Chain ", chain, "Hash ", hash, "Error ", err.Error())
-		return "", err
+		if err == nil {
+			err = fmt.Errorf("null err")
+		}
+		log.Warn("GetSender(): failed to get sender", "Chain ", chain, "Hash ", hash, "Error", err)
+		return ""
 	}
-	return ret[0].Sender, err
+	return ret[0].Sender
 }

@@ -104,7 +104,6 @@ func (p *EtherscanProvider) GetLogs(topics0 []string, from, to uint64) (model.Ev
 			page++
 		}
 	}
-
 	return ret, nil
 }
 
@@ -368,7 +367,7 @@ func (p *EtherscanProvider) deleteKey(key string) {
 }
 
 func doFetchData[T any](url, proxy string) (r T, err error) {
-	log.Debug("invoke etherscan", "url", url)
+	//log.Debug("invoke etherscan", "url", url)
 	var resp EtherscanResponse[T]
 	if err = utils.HttpGetObjectWithProxy(url, proxy, &resp); err != nil {
 		err = fmt.Errorf("%v, url: %v", err, url)
