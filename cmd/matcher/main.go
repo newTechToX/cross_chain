@@ -16,8 +16,8 @@ import (
 )
 
 var chainbaseRate = flag.Int("chainbase_limit", 20, "setup chainbase query rate (in Second)")
-var Anyswap = flag.Uint64("m", uint64(7121480), "input anyswap startId")
-var Across = flag.Uint64("a", uint64(1547700), "input across startId")
+var Anyswap = flag.Uint64("m", uint64(7859400), "input anyswap startId")
+var Across = flag.Uint64("a", uint64(1645500), "input across startId")
 var Synapse = flag.Uint64("s", uint64(2), "input synapse startId")
 
 //var Synapse = flag.Uint64("s", uint64(888), "input synapse startId")

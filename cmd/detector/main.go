@@ -16,8 +16,8 @@ import (
 	"syscall"
 )
 
-var Anyswap = flag.Uint64("m", uint64(7564009), "input anyswap startId")
-var Across = flag.Uint64("a", uint64(1571070), "input across startId")
+var Anyswap = flag.Uint64("m", uint64(7859426), "input anyswap startId")
+var Across = flag.Uint64("a", uint64(1645661), "input across startId")
 var logLvl = flag.String("log_level", "info", "set log level")
 var batchSize = flag.Int("batch_size", 1000, "set fetch batch size")
 var pprofPort = flag.String("pprof", "6060", "set pprof port")

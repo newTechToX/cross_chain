@@ -125,6 +125,9 @@ func (p *Provider) GetTraces(chain, hash string) ([]*chainbase.SyChainbaseInfo, 
 }
 
 func (p *Provider) GetSender(chain, hash string) string {
+	if chain == "eth" {
+		chain = "ethereum"
+	}
 	sender := p.chainbase.GetSender(chain, hash)
 	return sender
 }

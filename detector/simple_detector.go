@@ -58,7 +58,7 @@ func (a *SimpleOutDetector) DetectOutTx(datas model.Datas) {
 		//先检查fakeToken的情况
 		if isfake := a.logic.IsFakeToken(a.project, data); isfake != check_fake.SAFE {
 			info := fmt.Sprintf("fake token: fake token in database, chain:%s, address:%s, hash:%s", data.Chain, data.Token, data.Hash)
-			utils.SendMail("FAKE TOKEN DETECTED ", info)
+			utils.SendMail(fmt.Sprintf("%s FAKE TOKEN DETECTED", data.Project), info)
 			detected++
 		} else {
 			data.IsFakeToken.Scan(1)

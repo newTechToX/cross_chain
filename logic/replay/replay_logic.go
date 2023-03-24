@@ -94,7 +94,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 	}
 
 	//查询所有非to_address的获利地址信息并记录下来
-	if len(addresses) > 0 {
+	/*if len(addresses) > 0 {
 		info, err := a.aml.QueryAml(data.Chain, addresses)
 		if err != nil {
 			//log.Warn("replay.ReplayOutTxLogic(): Failed to query profit addresses", "Error ", err)
@@ -115,7 +115,7 @@ func (a *Replayer) ReplayOutTxLogic(table string, data *model.Data) (tag Tags, e
 				profit = append(profit, labels[0])
 			}
 		}
-	}
+	}*/
 
 	//检查token的获利是否符合
 	if tag.TokenProfitError != 1 {
