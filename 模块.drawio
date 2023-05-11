@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2023-05-11T07:47:21.028Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36" etag="4fO0YYG3TgL6czcW68ss" version="21.2.9" type="github" pages="4">
-  <diagram name="Page-1" id="5f0bae14-7c28-e335-631c-24af17079c00">
-    <mxGraphModel dx="1593" dy="821" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
+<mxfile host="app.diagrams.net" modified="2023-05-11T07:54:25.392Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36" etag="-1OO9TgKChDKTft9YGw-" version="21.2.9" type="github" pages="4">
+  <diagram name="交易匹配与数据收集通信调用" id="5f0bae14-7c28-e335-631c-24af17079c00">
+    <mxGraphModel dx="1247" dy="643" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" background="none" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -142,6 +142,14 @@
         <mxCell id="q-n3bbQd4MvI7GB6hKos-4" value="«interface»&lt;br&gt;&lt;b&gt;AddData&lt;/b&gt;" style="html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=12;align=center;" parent="1" vertex="1">
           <mxGeometry x="222.5" y="985.5" width="100" height="50" as="geometry" />
         </mxCell>
+        <mxCell id="1hGU9zyM1YSCkrpdID-d-6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="q-n3bbQd4MvI7GB6hKos-5" target="1hGU9zyM1YSCkrpdID-d-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="1hGU9zyM1YSCkrpdID-d-8" value="持续监听" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];rotation=-15;" vertex="1" connectable="0" parent="1hGU9zyM1YSCkrpdID-d-6">
+          <mxGeometry x="0.0013" y="1" relative="1" as="geometry">
+            <mxPoint x="35" y="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
         <mxCell id="q-n3bbQd4MvI7GB6hKos-5" value="" style="ellipse;whiteSpace=wrap;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=12;align=center;" parent="1" vertex="1">
           <mxGeometry x="417.5" y="1100.5" width="20" height="20" as="geometry" />
         </mxCell>
@@ -151,14 +159,14 @@
         <mxCell id="q-n3bbQd4MvI7GB6hKos-7" value="" style="ellipse;whiteSpace=wrap;html=1;rounded=0;shadow=0;comic=0;labelBackgroundColor=none;strokeWidth=1;fontFamily=Verdana;fontSize=12;align=center;" parent="1" vertex="1">
           <mxGeometry x="706" y="1050.5" width="20" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="q-n3bbQd4MvI7GB6hKos-9" style="edgeStyle=none;rounded=0;html=1;dashed=1;labelBackgroundColor=none;startArrow=none;startFill=0;startSize=8;endArrow=open;endFill=0;endSize=16;fontFamily=Verdana;fontSize=12;exitX=0.775;exitY=0.995;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" target="q-n3bbQd4MvI7GB6hKos-5" edge="1" source="q-n3bbQd4MvI7GB6hKos-2">
+        <mxCell id="q-n3bbQd4MvI7GB6hKos-10" style="edgeStyle=none;rounded=0;html=1;labelBackgroundColor=none;startArrow=none;startFill=0;startSize=8;endArrow=open;endFill=0;endSize=16;fontFamily=Verdana;fontSize=12;entryX=1;entryY=0;entryDx=0;entryDy=0;exitX=0;exitY=1;exitDx=0;exitDy=0;" parent="1" source="q-n3bbQd4MvI7GB6hKos-7" target="1hGU9zyM1YSCkrpdID-d-1" edge="1">
           <mxGeometry relative="1" as="geometry">
-            <mxPoint x="476.41310988818987" y="1320" as="sourcePoint" />
+            <mxPoint x="740" y="1220" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="q-n3bbQd4MvI7GB6hKos-10" style="edgeStyle=none;rounded=0;html=1;dashed=1;labelBackgroundColor=none;startArrow=none;startFill=0;startSize=8;endArrow=open;endFill=0;endSize=16;fontFamily=Verdana;fontSize=12;exitX=0;exitY=0;exitDx=260;exitDy=5;exitPerimeter=0;" parent="1" source="q-n3bbQd4MvI7GB6hKos-1" target="q-n3bbQd4MvI7GB6hKos-7" edge="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="520" y="1308" as="sourcePoint" />
+        <mxCell id="1hGU9zyM1YSCkrpdID-d-2" value="匹配不成功交易信息" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="q-n3bbQd4MvI7GB6hKos-10">
+          <mxGeometry x="0.0076" y="1" relative="1" as="geometry">
+            <mxPoint x="-1" as="offset" />
           </mxGeometry>
         </mxCell>
         <mxCell id="q-n3bbQd4MvI7GB6hKos-11" style="edgeStyle=elbowEdgeStyle;rounded=0;html=1;labelBackgroundColor=none;startArrow=none;startFill=0;startSize=8;endArrow=none;endFill=0;endSize=16;fontFamily=Verdana;fontSize=12;" parent="1" source="vk3iwY4ST60MDna3kBVg-2" edge="1">
@@ -210,6 +218,9 @@
         </mxCell>
         <mxCell id="vk3iwY4ST60MDna3kBVg-6" value="«parameter»&lt;br&gt;&lt;b&gt;block: 区块号&lt;/b&gt;" style="html=1;dropTarget=0;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="367.5" y="1030.5" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="1hGU9zyM1YSCkrpdID-d-1" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;通信&lt;br&gt;端口&lt;/font&gt;" style="ellipse;shape=doubleEllipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="586" y="1144" width="60" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
